@@ -19,7 +19,7 @@ import omero
 import omero.cli
 from omero.rtypes import wrap, rlong, rstring
 from omero.gateway import OriginalFileWrapper
-from omeroweb.webclient.decorators import login_required
+from omeroweb.webclient.decorators import login_required, render_response
 
 TEMP_DIR = '/home/omero/temp/'
 JSON_FILEANN_NS = "omero.web.incident.json"
@@ -161,6 +161,7 @@ def list_incidents(conn=None, **kwargs):
 
     
 @login_required()
+@render_response()
 def report(request, conn=None, **kwargs):
     
     if request.POST:  
@@ -197,7 +198,11 @@ def report(request, conn=None, **kwargs):
     else:
         form = UploadForm()
         incidents = list_incidents(conn)
-        return render(request,'incident/index.html', {'form': form, 'incidents': incidents })
+        context = {}
+        context['form'] = form
+        context['incidents'] = incidents
+        context['template'] = 'omeroweb_upload/index.html'
+        return context
     
 # a view to be called from uploader when all files are completed
 # perhaps keep the image_ids in request.session
