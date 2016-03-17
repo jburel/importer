@@ -1,0 +1,10 @@
+Incident reporting app - for reporting when something goes wrong with a microscope. A user is able to provide an image (which is uploaded to omero) and a description of what went wrong.
+
+This mainly used as a test bed for:
+
+1. Uploading images to OMERO from a web browser.
+2. Running the upload in the background using Celery.
+
+Browser uploading is handled by Plupload. Drag and drop not yet implemented.
+
+Styling handled by Bootstrap.

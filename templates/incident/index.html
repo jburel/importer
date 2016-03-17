@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+	<head>
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<link rel="stylesheet" href="{% static 'incident/css/bootstrap.min.css' %}" type="text/css">
+		<link rel="stylesheet" href="{% static 'incident/css/incident.css' %}" type="text/css">
+		<script type="text/javascript" src="{% static 'incident/js/jquery-1.11.3.min.js' %}"></script>
+		<script type="text/javascript" src="{% static 'incident/js/plupload.full.min.js' %}"></script>
+		<script type="text/javascript" src="{% static 'incident/jquery.plupload.queue/jquery.plupload.queue.min.js' %}"></script>
+		<script type="text/javascript" src="{% static 'incident/js/bootstrap.min.js' %}"></script>
+
+		<style>
+			.btn-file {
+			  position: relative;
+			  overflow: hidden;
+			}
+			.btn-file input[type=file] {
+			  position: absolute;
+			  top: 0;
+			  right: 0;
+			  min-width: 100%;
+			  min-height: 100%;
+			  font-size: 100px;
+			  text-align: right;
+			  filter: alpha(opacity=0);
+			  opacity: 0;
+			  background: red;
+			  cursor: inherit;
+			  display: block;
+			}
+			input[readonly] {
+			  background-color: white !important;
+			  cursor: text !important;
+			}
+			#drop-target {
+			    border: 10px dashed #999;
+			    text-align: center;
+			    color: #999;
+			    font-size: 20px;
+			    width: 600px;
+			    height: 300px;
+			    line-height: 300px;
+			    /*cursor: pointer;*/
+			  }
+		</style>
+	</head>
+	
+	<body>
+		<!--<div id="filelist">Your browser doesn't have Flash, Silverlight or HTML5 support.</div>
+				<br />-->
+		<!-- description modal -->
+		<div class="modal fade" id="description_modal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+			<div class="modal-dialog" role="document">
+		    	<div class="modal-content">
+			      	<div class="modal-header">
+			        	<button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+			        	<h4 class="modal-title">Incident description</h4>
+			      	</div>
+			    	<div class="modal-body">
+			        	<p>One fine body&hellip;</p>
+			      	</div>
+			    	<div class="modal-footer">
+			        	<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+			      	</div>
+		    	</div><!-- /.modal-content -->
+		  	</div><!-- /.modal-dialog -->
+		</div><!-- /.modal -->
+		 
+		<div class="container" id="container">
+			<div class="jumbotron">
+				<ul class="nav nav-pills">
+						<li role="presentation" class="active"><a href="#report" role="tab" data-toggle="tab">Create incident</a></li>
+						<li role="presentation"><a href="#incidents"role="tab" data-toggle="tab">Current incidents</a></li>
+				</ul>
+				<div class="tab-content">
+					<div role="tabpanel" class="tab-pane active" id="report">
+						<!--<div id="drop-target">Drop your files or folders here</div>-->
+						<p></p>
+						<form id="report_incident" action="{% url 'report' %}" method="POST" enctype="multipart/form-data">{% csrf_token %}
+					        {% for field in form %}
+					            {% if field.errors %}
+					                <div class="form-group has-error">
+					                    <label class="control-label">{{ field.label }}</label> 
+					                    <div class="controls">{{ field }}
+					                        <span class="help-inline">
+					                            {% for error in  field.errors %}{{ error }}{% endfor %}
+					                        </span>
+					                    </div>
+					                </div>
+					            {% else %}
+					            	<div class="form-group">
+						            	{% if field.label_tag == form.file.label_tag %}
+							            	<div class="input-group">
+				                				<span class="input-group-btn">
+								                    <span class="btn btn-primary btn-file">
+				                				        <span class="glyphicon glyphicon-folder-open"> Browse</span>
+				                				        {{ field }}
+				                    				</span>
+				                				</span>
+				                				<input type="text" class="form-control" id="selected" readonly>
+				            				</div>
+								        {% elif field.label_tag == form.date.label_tag %}
+									        {{ field }}
+							            {% else %}
+								        	<label class="sr-only">{{ field.label }}</label>
+										    {{ field }}
+								        {% endif %}
+							        </div>
+					            {% endif %}
+					        {% endfor %}
+							<div class="form-actions">
+								<button type="submit" class="btn" id="submit_feedback">
+			  						<span class="glyphicon glyphicon-upload"> Submit</span>
+								</button>
+							</div>
+						</form>
+					</div>
+					<div role="tabpanel" class="tab-pane" id="incidents">
+						<div class="table-responsive">
+						  <table class="table" id="incidents-table">
+						    <thead>
+						        <tr>
+						        	<th>ID</th>
+						            <th>Date</th>
+						            <th>Severity</th>
+						            <th>Reported by</th>
+						            <th></th>
+						            <th></th>
+						        </tr>
+						    </thead>
+						    <tbody>
+						    {% for incident in incidents %}
+						        <tr id="file{{ incident.fileId }}">
+						        	<td>{{ incident.fileId }}</td>
+						            <td>{{ incident.date }}</td>
+						            <td>{{ incident.severity }}</td>
+						            <td>{{ incident.user }}</td>
+						            <td>
+						                <button type="button" class="btn btn-sm" data-toggle="modal" data-target="#description_modal">Description
+										</button>
+						            </td>
+						            <td>
+						                <a id="deleteFile{{ incident.fileId }}" onclick="deleteIncident(this.id)" href="#" role="button" class="btn btn-primary">Delete</a>
+						            </td>							            
+						        </tr>
+						    {% endfor %}
+						  </tbody>
+						  </table>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+		<br />
+		<pre id="console"></pre>
+		<script type="text/javascript">
+
+		$("#id_microscope").change(function () {
+		    if($(this).val() == "") $(this).addClass("empty");
+		    else $(this).removeClass("empty")
+		});
+
+		$("#id_microscope").change();
+
+		$("#id_severity").change(function () {
+		    if($(this).val() == "") $(this).addClass("empty");
+		    else $(this).removeClass("empty")
+		});
+
+		$("#id_severity").change();
+
+		//$(document).on('change', '.btn-file', function() {
+		//	var input = $(this);
+				//label = input.val().replace(/\\/g, '/').replace(/.*\//, '');
+		//	console.log(input.val())
+		//});
+		 
+		var uploader = new plupload.Uploader({
+		    runtimes : 'html5,flash,silverlight,html4',
+		     
+		    browse_button : 'id_file', // you can pass in id...
+		    drop_element : 'container',
+		    //container: document.getElementById('drop-target'), // ... or DOM Element itself
+		     
+		    url : "{% url 'report' %}",
+ 
+		    max_file_count: 1,
+	        max_file_size : '10mb',
+
+	        chunk_size: '1mb',
+		     
+		    filters : {
+		        max_file_size : '10mb',
+		        mime_types: [
+		            {title : "Image files", extensions : "jpg,gif,png"},
+		            {title : "Zip files", extensions : "zip"}
+		        ]
+		    },
+
+		    // Views to activate
+	        views: {
+	            list: true,
+	            thumbs: true, // Show thumbs
+	            active: 'thumbs'
+	        },
+
+			multipart_params : {
+				"date": $("#id_date").val(),
+			    "microscope" : $("#id_microscope").val(),
+			    "severity" : $("#id_severity").val(),
+			    "user": $("#id_user").val(),
+			    "email": $("#id_email").val(),
+				"comment": $("#id_comment").val(),
+				"file": $("#id_file").val()
+			},
+
+		    headers : {'X-Requested-With' : 'XMLHttpRequest', 'X-CSRFToken' : '{{csrf_token}}'},
+		 
+		    // Flash settings
+		    flash_swf_url : '/plupload/js/Moxie.swf',
+		 
+		    // Silverlight settings
+		    silverlight_xap_url : '/plupload/js/Moxie.xap',
+		     
+		 	preinit: saveCallback,
+
+		    init: {
+		        PostInit: function() {
+		            //document.getElementById('filelist').innerHTML = '';
+		 			document.getElementById('selected').value = '';
+		        },
+		 
+		        FilesAdded: function(up, files) {
+		            /*plupload.each(files, function(file) {
+		                document.getElementById('filelist').innerHTML += '<div id="' + file.id + '">' + file.name + ' (' + plupload.formatSize(file.size) + ') <b></b></div>';
+		            });*/
+		            plupload.each(files, function(file) {
+		                document.getElementById('selected').value = file.name + ' (' + plupload.formatSize(file.size) + ') ';
+		            });
+		        },
+
+	            FileUploaded: function(up, file, info) {
+	                document.getElementById('selected').value = '';
+	            },
+		 
+		        UploadProgress: function(up, file) {
+		            /*document.getElementById(file.id).getElementsByTagName('b')[0].innerHTML = '<span>' + file.percent + "%</span>";*/
+		            document.getElementById('selected').value = file.name + ' (' + plupload.formatSize(file.size) + ')  ' + file.percent + '%';
+		        },
+		 
+		        Error: function(up, err) {
+		            document.getElementById('console').innerHTML += "\nError #" + err.code + ": " + err.message;
+		        }
+		    }
+		});
+
+		function getCookie(name) {
+		    var cookieValue = null;
+		    if (document.cookie && document.cookie != '') {
+		        var cookies = document.cookie.split(';');
+		        for (var i = 0; i < cookies.length; i++) {
+		            var cookie = jQuery.trim(cookies[i]);
+		            // Does this cookie string begin with the name we want?
+		            if (cookie.substring(0, name.length + 1) == (name + '=')) {
+		                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+		                break;
+		            }
+		        }
+		    }
+		    return cookieValue;
+		}
+		var csrftoken = getCookie('csrftoken');
+
+		function csrfSafeMethod(method) {
+		    // these HTTP methods do not require CSRF protection
+		    return (/^(GET|HEAD|OPTIONS|TRACE)$/.test(method));
+		}
+		$.ajaxSetup({
+		    beforeSend: function(xhr, settings) {
+		        if (!csrfSafeMethod(settings.type) && !this.crossDomain) {
+		            xhr.setRequestHeader("X-CSRFToken", csrftoken);
+		        }
+		    }
+		});
+		 
+		uploader.init();
+		$('#report_incident').submit(function(e) {  
+
+		       // Validate number of uploaded files  
+		       if (uploader.total.uploaded == 0) {  
+		           // Files in queue upload them first  
+		           e.preventDefault();
+		           if (uploader.files.length > 0) { 
+		               // When all files are uploaded submit form  
+		               uploader.bind('UploadProgress', function() {  
+		                   if (uploader.total.uploaded == uploader.files.length)  
+		                       $('report_incident').submit();  
+		               });  
+		               uploader.start();  
+		           } else {  
+		               e.preventDefault();
+		               saveIncident();  
+		           }    
+		       }  
+		   });
+
+		function saveIncident(){
+			var incidentJSON = {
+				date: $("#id_date").val(),
+			    microscope : $("#id_microscope").val(),
+			    severity : $("#id_severity").val(),
+			    user: $("#id_user").val(),
+			    email: $("#id_email").val(),
+				comment: $("#id_comment").val(),
+			};
+			var data = {};
+			data.incidentJSON = JSON.stringify(incidentJSON);	
+			    $.ajax({
+			        type: 'post',
+			        url: '/incident/save/',
+			        data: data,
+			        success: function(results){
+			        	console.log(results)
+			        	$('#incidents-table tbody').prepend('<tr id="file'+results.fileId+'"><td>'+results.fileId+'</td><td>'+results.date+'</td><td>'+results.severity+'</td><td>'+results.user+'</td><td><button type="button" class="btn btn-sm" data-toggle="modal" data-target="#description_modal">Description</button></td><td><a id="deleteFile'+results.fileId+'" onclick="deleteIncident(this.id)" href="#" role="button" class="btn btn-primary">Delete</a></td></tr>');
+			        }
+			    });
+		}
+
+		function saveCallback(Uploader) {
+			Uploader.bind('FileUploaded', function(Up, File, Response) {
+			    if( (Uploader.total.uploaded + 1) == Uploader.files.length)
+			    {
+					saveIncident();
+			    }
+			});
+		}
+
+		function deleteIncident(buttonId) { 
+			var fileId = $('#'+buttonId).closest("tr").find("td:nth-child(1)").text();
+			console.log(fileId)
+			$.post("{% url 'delete_incident' %}", {fileId: fileId}, function(fId){
+				$('#file'+fId).remove();
+				return false;
+			});
+		}
+
+		 
+		</script>
+	</body>
+</html>
