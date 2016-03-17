@@ -196,12 +196,14 @@ def report(request, conn=None, **kwargs):
             response_data = {'form_saved': False, 'errors': form.errors}
             return HttpResponse(json.dumps(response_data))
     else:
+        user = conn.getUser()
+        print user.omeName
         form = UploadForm()
         incidents = list_incidents(conn)
         context = {}
         context['form'] = form
         context['incidents'] = incidents
-        context['template'] = 'omeroweb_upload/index.html'
+        context['template'] = 'omeroweb_upload/containers.html'
         return context
     
 # a view to be called from uploader when all files are completed
