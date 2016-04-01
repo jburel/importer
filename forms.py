@@ -4,20 +4,31 @@ from django.forms import DateTimeField, DateTimeInput, EmailField, \
 						 Select, FileField
 import datetime
 
-class UploadForm(forms.Form):  
-	SCOPES = (('', 'Select microscope',),('confocal', 'Confocal',), ('nstorm', 'nSTORM',))
-	LEVELS = (('', 'Severity',),('low', 'Low',), ('medium', 'Medium',),('high', 'High',))
-	microscope = ChoiceField(required=True,choices=SCOPES,\
-							 widget=Select(attrs={'class':'form-control',\
-							 					   'selected': 'selected'}))
-	severity = ChoiceField(required=True,choices=LEVELS,\
-							 widget=Select(attrs={'class':'form-control',\
-							 					   'selected': 'selected'}))
+class GroupForm(forms.Form):  
+	def __init__(self, groups=None, *args, **kwargs):
+		super(GroupForm, self).__init__(*args, **kwargs)
+		self.fields['group'].choices = groups
+
+	group = ChoiceField(required=True,choices=())		
+
+class ProjectForm(forms.Form):  
+	def __init__(self, projects=None, *args, **kwargs):
+		super(ProjectForm, self).__init__(*args, **kwargs)
+		self.fields['project'].choices = projects
+
+	project = ChoiceField(required=True,choices=())		
+
+class DatasetForm(forms.Form):  
+	def __init__(self, datasets=None, *args, **kwargs):
+		super(DatasetForm, self).__init__(*args, **kwargs)
+		self.fields['dataset'].choices = datasets
+
+	dataset = ChoiceField(required=True,choices=())		
+
+class UploadForm(forms.Form):  	
 	date = DateTimeField(initial=datetime.date.today,required=True,\
-		widget=DateTimeInput(attrs={'class':'form-control','style': 'display:none;'}))
-	user = CharField(widget=TextInput(attrs={'class':'form-control','placeholder':'Name'}),required=True)
-	email = EmailField(widget=TextInput(attrs={'class':'form-control','placeholder':'Email'}),required=True)
-	comment = CharField(widget=Textarea(attrs={'class':'form-control','placeholder':'Comment'}),required=True) 
+		widget=DateTimeInput(attrs={'style': 'display:none;'}))
+	email = EmailField(widget=TextInput(attrs={'placeholder':'Email'}),required=True)
 	file = FileField() 
 
 	def save(self, temp_file, uploaded_file):  

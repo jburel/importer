@@ -8,11 +8,12 @@ import json
 import time
 from cStringIO import StringIO
 
+from django.conf import settings
 from django.http import Http404, HttpResponse, HttpResponseRedirect, HttpResponseBadRequest
 from django.shortcuts import render
 from django.core.urlresolvers import reverse
 
-from forms import UploadForm, FeedbackForm
+from forms import UploadForm, GroupForm, ProjectForm, DatasetForm, FeedbackForm
 from tasks import celery_import
 
 import omero
@@ -95,6 +96,101 @@ def get_new_image(conn):
     image_id = int(ids[0])
     newImg = conn.getObject('Image',image_id)
     return newImg
+
+def group_list(groups):
+    glist = []
+    for g in groups:
+        glist.append(g['name'])
+    return glist
+
+def get_datasets(conn,user_id):
+
+    query = "select i from Image as i"\
+            " left outer join i.datasetLinks as dl join dl.parent as dataset"\
+            " where dataset.id = :did"
+    countImages = "select count(i) from Image as i"\
+                  " left outer join i.datasetLinks as dl join dl.parent as dataset"\
+                  " where dataset.id = :did"
+    datasets = []
+    for d in conn.listOrphans("Dataset", eid=user_id):
+        ddata = {'id': d.getId(), 'name': d.getName()}
+        ddata['description'] = d.getDescription()
+        ddata['owner'] = d.getDetails().getOwner().getOmeName()
+        # Look-up a single image
+        # params.map['did'] = wrap(d.id)
+        params.addLong('did', d.id)
+        img = queryService.findByQuery(query, params, conn.SERVICE_OPTS)
+        if img is None:
+            continue    # ignore datasets with no images
+        ddata['image'] = {'id': img.id.val, 'name': img.name.val}
+        paramAll.addLong('did', d.id)
+        imageCount = queryService.projection(
+            countImages, paramAll, conn.SERVICE_OPTS)
+        ddata['imageCount'] = imageCount[0][0].val
+        datasets.append(ddata)
+    
+    return datasets
+    
+def get_projects(conn,user_id):
+
+    projects = []
+    # Will be from active group, owned by user_id (as perms allow)
+    for p in conn.listProjects(eid=user_id):
+        pdata = {'id': p.getId(), 'name': p.getName()}
+        pdata['description'] = p.getDescription()
+        pdata['owner'] = p.getDetails().getOwner().getOmeName()
+        # Look-up a single image
+        params.addLong('pid', p.id)
+        img = queryService.findByQuery(query, params, conn.SERVICE_OPTS)
+        if img is None:
+            continue    # Ignore projects with no images
+        pdata['image'] = {'id': img.id.val, 'name': img.name.val}
+        paramAll.addLong('pid', p.id)
+        imageCount = queryService.projection(
+            countImages, paramAll, conn.SERVICE_OPTS)
+        pdata['imageCount'] = imageCount[0][0].val
+        pdata['datasetCount'] = imageCount[0][1].val
+        projects.append(pdata)
+
+    return projects
+
+def get_groups(conn):
+
+    ctx = conn.getEventContext()
+    print ctx
+    myGroups = list(conn.getGroupsMemberOf())
+
+    user = conn.getUser()
+    user_id = user.getId()
+
+    # Need a custom query to get 1 (random) image per Project
+    queryService = conn.getQueryService()
+    params = omero.sys.ParametersI()
+    params.theFilter = omero.sys.Filter()
+    params.theFilter.limit = wrap(1)
+
+    query = "select count(obj.id) from %s as obj"
+
+    groups = []
+    for g in myGroups:
+        conn.SERVICE_OPTS.setOmeroGroup(g.id)
+        images = list(conn.getObjects("Image", params=params))
+        if len(images) == 0:
+            continue        # Don't display empty groups
+        pCount = queryService.projection(query % 'Project', None, conn.SERVICE_OPTS)
+        dCount = queryService.projection(query % 'Dataset', None, conn.SERVICE_OPTS)
+        iCount = queryService.projection(query % 'Image', None, conn.SERVICE_OPTS)
+        groups.append({'id': g.getId(),
+                'name': g.getName(),
+                'description': g.getDescription(),
+                'projectCount': pCount[0][0]._val,
+                'datasetCount': dCount[0][0]._val,
+                'imageCount': iCount[0][0]._val,
+                'image': len(images) > 0 and images[0] or None})  
+
+        projects = get_projects(conn,user_id)  
+        # need to get groups, all projects in each group and then all datasets in each project
+    return groups
     
 def do_import(conn, filename):
     """
@@ -129,40 +225,10 @@ def do_import(conn, filename):
     newImg = get_new_image(conn)
     empty_temp(TEMP_DIR)
     return newImg
-
-def index(request):
-    """
-    Just a place-holder while we get started
-    """
-    return HttpResponse("Welcome to your app home-page!")
-
-def list_incidents(conn=None, **kwargs):
-
-    fileAnns = list(conn.getObjects(
-        "FileAnnotation", attributes={'ns': JSON_FILEANN_NS}))
-    #fileAnns.sort(key=lambda x: x.creationEventDate(), reverse=True)
-    if fileAnns:
-        rsp = []
-        for fa in fileAnns:
-
-            incidentJSON = "".join(list(fa.getFileInChunks()))
-            incidentJSON = incidentJSON.decode('utf8')
-            jsonFile = fa.getFile()
-            ownerId = jsonFile.getDetails().getOwner().getId()
-
-            # parse the json, so we can add info...
-            json_data = json.loads(incidentJSON)
-            json_data['fileId'] = fa.id
-            rsp.append(json_data)
-        return rsp
-    #else:
-    #    response_data = {'message': "no incidents"}
-    #    return HttpResponse(json.dumps(response_data))
-
     
 @login_required()
 @render_response()
-def report(request, conn=None, **kwargs):
+def upload(request, conn=None, **kwargs):
     
     if request.POST:  
         form = UploadForm(request.POST, request.FILES)
@@ -197,13 +263,24 @@ def report(request, conn=None, **kwargs):
             return HttpResponse(json.dumps(response_data))
     else:
         user = conn.getUser()
-        print user.omeName
-        form = UploadForm()
-        incidents = list_incidents(conn)
+        groups = get_groups(conn)
+        group_names = group_list(groups)
+        gnames = [("","")]
+        pnames = [("","")]
+        dnames = [("","")]        
+        for gn in group_names:
+            gnames.append((gn,gn))
+
+        uform = UploadForm()
+        gform = GroupForm(groups=gnames)
+        pform = ProjectForm(projects=pnames)
+        dform = DatasetForm(datasets=dnames)
         context = {}
-        context['form'] = form
-        context['incidents'] = incidents
-        context['template'] = 'omeroweb_upload/containers.html'
+        context['upload_form'] = uform
+        context['project_form'] = pform        
+        context['dataset_form'] = dform                
+        context['page_size'] = settings.PAGE
+        context['template'] = 'omeroweb_upload/index.html'
         return context
     
 # a view to be called from uploader when all files are completed
@@ -239,67 +316,4 @@ Format:
     smtpObj = smtplib.SMTP('localhost')
     smtpObj.sendmail(ADMIN_EMAIL, [params['Email_address']], msg.as_string())
     smtpObj.quit()
-
-@login_required(setGroupContext=True)
-def save_incident(request, conn=None, **kwargs):
-    """
-    Saves 'incidentJSON' in POST as an original file. If 'fileId' is specified
-    in POST, then we update that file. Otherwise create a new one with
-    name 'figureName' from POST.
-    """
-
-    update = conn.getUpdateService()
-    if not request.method == 'POST':
-        return HttpResponse("Need to use POST")
-
-    incidentJSON = request.POST.get('incidentJSON')
-    if incidentJSON is None:
-        return HttpResponse("No 'incidentJSON' in POST")
-
-    incidentJSON = incidentJSON.encode('utf8')
-
-    json_data = json.loads(incidentJSON)
-
-    n = datetime.now( )
-    # time-stamp name by default: WebFigure_2013-10-29_22-43-53.json
-    incidentName = "Incident_%s-%s-%s_%s-%s-%s.json" % \
-        (n.year, n.month, n.day, n.hour, n.minute, n.second)
-    incidentName = incidentName.encode('utf8')
-    # we store json in description field...
-    description = {}
-    description['name'] = incidentName
-
-    gid = conn.getGroupFromContext().getId()
-    conn.SERVICE_OPTS.setOmeroGroup(gid)
-
-    fileSize = len(incidentJSON)
-    f = StringIO()
-    f.write(incidentJSON)
-    # Can't use unicode for file name
-    incidentName = unicodedata.normalize('NFKD', unicode(incidentName)).encode('ascii','ignore')
-    origF = createOriginalFileFromFileObj(
-        conn, f, '', incidentName, fileSize, mimetype="application/json")
-    fa = omero.model.FileAnnotationI()
-    fa.setFile(omero.model.OriginalFileI(origF.getId(), False))
-    fa.setNs(wrap(JSON_FILEANN_NS))
-    desc = json.dumps(description)
-    fa.setDescription(wrap(desc))
-    fa = update.saveAndReturnObject(fa, conn.SERVICE_OPTS)
-    fileId = fa.id.val
-    rv = json_data
-    rv['fileId'] = fileId
-    data = json.dumps(rv)
-    return HttpResponse(data, content_type='application/json')
-
-@login_required()
-def delete_incident(request, conn=None, **kwargs):
-    """ POST 'fileId' to delete the FileAnnotation """
-
-    if request.method != 'POST':
-        return HttpResponse("Need to POST 'fileId' to delete")
-
-    fileId = request.POST.get('fileId')
-    # fileAnn = conn.getObject("FileAnnotation", fileId)
-    conn.deleteObjects("Annotation", [fileId])
-    return HttpResponse(str(fileId))
 

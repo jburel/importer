@@ -1,19 +1,26 @@
 {% extends "omeroweb_upload/base.html" %}
+{% load i18n %}
 
 {% block title %}
     omeroweb.upload
 {% endblock %}
 
 {% block center_details %}
-	<table class="tablesorter tablesorter_basic">
-	    <thead>
-	        <tr>
-	            <th>Name</th>
-	            <th></th>
-	        </tr>
-	    </thead>
-	    <tbody>
-	    <tr><td></td></tr>
-	  </tbody>
-	</table>
+	<form class="standard_form settings_form" id="report_incident" action="{% url 'report' %}" method="POST" enctype="multipart/form-data">{% csrf_token %}
+        {{ form.errors }}
+        {{ form.non_field_errors }}
+        <p>{% trans "Fields marked in red are mandatory." %}</p>
+        {% for field in form %}
+            {% if field.errors %}<div style="clear:both">{{ field.errors }}</div>{% endif %}
+            {% if field.label_tag != form.date.label_tag %}
+	            <span class="required">{{ field.label_tag }}</span>
+	            {{ field }}
+	        {% else %}
+	        	{{ field }}
+	        {% endif %}
+            </br>
+        {% endfor %}
+        </br>
+		<input type="submit" value="{% trans 'Submit Request' %}" />
+	</form>
 {% endblock %}
