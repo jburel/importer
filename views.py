@@ -97,67 +97,49 @@ def get_new_image(conn):
     newImg = conn.getObject('Image',image_id)
     return newImg
 
-def group_list(groups):
-    glist = []
-    for g in groups:
-        glist.append(g['name'])
-    return glist
+def list_object_ids(objects):
+    olist = []
+    for o in objects:
+        olist.append(o['id'])
+    return olist
 
-def get_datasets(conn,user_id):
+def list_object_names(objects):
+    olist = []
+    for o in objects:
+        print "o",o
+        olist.append(o['name'])
+    return olist
 
-    query = "select i from Image as i"\
-            " left outer join i.datasetLinks as dl join dl.parent as dataset"\
-            " where dataset.id = :did"
-    countImages = "select count(i) from Image as i"\
-                  " left outer join i.datasetLinks as dl join dl.parent as dataset"\
-                  " where dataset.id = :did"
+def list_datasets(conn,gid,project_id):
+    conn.SERVICE_OPTS.setOmeroGroup(gid)
+    project = conn.getObject("Project", project_id)
     datasets = []
-    for d in conn.listOrphans("Dataset", eid=user_id):
+    for d in project.listChildren():
         ddata = {'id': d.getId(), 'name': d.getName()}
         ddata['description'] = d.getDescription()
         ddata['owner'] = d.getDetails().getOwner().getOmeName()
-        # Look-up a single image
-        # params.map['did'] = wrap(d.id)
-        params.addLong('did', d.id)
-        img = queryService.findByQuery(query, params, conn.SERVICE_OPTS)
-        if img is None:
-            continue    # ignore datasets with no images
-        ddata['image'] = {'id': img.id.val, 'name': img.name.val}
-        paramAll.addLong('did', d.id)
-        imageCount = queryService.projection(
-            countImages, paramAll, conn.SERVICE_OPTS)
-        ddata['imageCount'] = imageCount[0][0].val
         datasets.append(ddata)
     
     return datasets
     
-def get_projects(conn,user_id):
+def list_projects(conn,gid):
 
+    conn.SERVICE_OPTS.setOmeroGroup(gid)
+    user = conn.getUser()
+    user_id = user.getId()
     projects = []
     # Will be from active group, owned by user_id (as perms allow)
     for p in conn.listProjects(eid=user_id):
         pdata = {'id': p.getId(), 'name': p.getName()}
         pdata['description'] = p.getDescription()
         pdata['owner'] = p.getDetails().getOwner().getOmeName()
-        # Look-up a single image
-        params.addLong('pid', p.id)
-        img = queryService.findByQuery(query, params, conn.SERVICE_OPTS)
-        if img is None:
-            continue    # Ignore projects with no images
-        pdata['image'] = {'id': img.id.val, 'name': img.name.val}
-        paramAll.addLong('pid', p.id)
-        imageCount = queryService.projection(
-            countImages, paramAll, conn.SERVICE_OPTS)
-        pdata['imageCount'] = imageCount[0][0].val
-        pdata['datasetCount'] = imageCount[0][1].val
         projects.append(pdata)
 
     return projects
 
-def get_groups(conn):
+def list_groups(conn):
 
     ctx = conn.getEventContext()
-    print ctx
     myGroups = list(conn.getGroupsMemberOf())
 
     user = conn.getUser()
@@ -188,7 +170,6 @@ def get_groups(conn):
                 'imageCount': iCount[0][0]._val,
                 'image': len(images) > 0 and images[0] or None})  
 
-        projects = get_projects(conn,user_id)  
         # need to get groups, all projects in each group and then all datasets in each project
     return groups
     
@@ -263,13 +244,32 @@ def upload(request, conn=None, **kwargs):
             return HttpResponse(json.dumps(response_data))
     else:
         user = conn.getUser()
-        groups = get_groups(conn)
-        group_names = group_list(groups)
-        gnames = [("","")]
-        pnames = [("","")]
-        dnames = [("","")]        
-        for gn in group_names:
-            gnames.append((gn,gn))
+        groups = list_groups(conn)
+        group_names = list_object_names(groups)
+        gids = list_object_ids(groups)
+        gnames = []
+
+        first_group = groups[0]
+        projects = list_projects(conn,first_group['id'])
+        project_names = list_object_names(projects)
+        pids = list_object_ids(projects)
+        pnames = []
+
+        first_project = projects[0]
+        datasets = list_datasets(conn,first_group['id'],first_project['id'])
+        dataset_names = list_object_names(datasets)
+        dids = list_object_ids(datasets)
+        dnames = []        
+
+        for gn,g in zip(group_names,gids):
+            gnames.append((g,gn))
+
+        for pn in project_names:
+            pnames.append((pn,pn))
+
+        for dn in dataset_names:
+            dnames.append((dn,dn))
+
 
         uform = UploadForm()
         gform = GroupForm(groups=gnames)
@@ -277,12 +277,41 @@ def upload(request, conn=None, **kwargs):
         dform = DatasetForm(datasets=dnames)
         context = {}
         context['upload_form'] = uform
+        context['group_form'] = gform         
         context['project_form'] = pform        
         context['dataset_form'] = dform                
         context['page_size'] = settings.PAGE
         context['template'] = 'omeroweb_upload/index.html'
         return context
-    
+
+@login_required()
+def listDatasets_json(request, conn=None, **kwargs):
+
+    if request.POST:
+        gid = request.POST.get("group_id")
+        pid = request.POST.get("project_id")
+        rv = list_datasets(conn,gid,pid)
+        data = json.dumps(rv)
+        return HttpResponse(data, content_type='application/json')
+    else:
+        rv = {'message':"failed"}
+        error = json.dumps(rv)
+        return HttpResponseBadRequest(error, content_type='application/json')
+            
+@login_required()
+def listProjects_json(request, conn=None, **kwargs):
+
+    if request.POST:
+        gid = request.POST.get("group_id")
+        print "gid",gid
+        rv = list_projects(conn,gid)
+        data = json.dumps(rv)
+        return HttpResponse(data, content_type='application/json')
+    else:
+        rv = {'message':"failed"}
+        error = json.dumps(rv)
+        return HttpResponseBadRequest(error, content_type='application/json')
+
 # a view to be called from uploader when all files are completed
 # perhaps keep the image_ids in request.session
 @login_required()    

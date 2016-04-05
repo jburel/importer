@@ -9,21 +9,21 @@ class GroupForm(forms.Form):
 		super(GroupForm, self).__init__(*args, **kwargs)
 		self.fields['group'].choices = groups
 
-	group = ChoiceField(required=True,choices=())		
+	group = ChoiceField(required=True,choices=())			
 
 class ProjectForm(forms.Form):  
 	def __init__(self, projects=None, *args, **kwargs):
 		super(ProjectForm, self).__init__(*args, **kwargs)
 		self.fields['project'].choices = projects
 
-	project = ChoiceField(required=True,choices=())		
+	project = ChoiceField(required=True,choices=())
 
 class DatasetForm(forms.Form):  
 	def __init__(self, datasets=None, *args, **kwargs):
 		super(DatasetForm, self).__init__(*args, **kwargs)
 		self.fields['dataset'].choices = datasets
 
-	dataset = ChoiceField(required=True,choices=())		
+	dataset = ChoiceField(required=True,choices=())
 
 class UploadForm(forms.Form):  	
 	date = DateTimeField(initial=datetime.date.today,required=True,\

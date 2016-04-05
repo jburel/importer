@@ -15,7 +15,52 @@
 	<![endif]-->    
 	<script type="text/javascript">
 		$(document).ready(function() {
-			$("#id_group").chosen({disable_search_threshold: 10,placeholder_text:'Choose one of your groups'});
+			$("#id_group").chosen({disable_search_threshold: 10,width: "200px"});
+			$("#id_project").chosen({disable_search_threshold: 10,width: "200px"});
+			$("#id_dataset").chosen({disable_search_threshold: 10,width: "200px"});
+
+			$("#id_group").val($("#id_group option:first").val());
+			$("#id_group").trigger("chosen:updated");
+			$('#id_group').val('').trigger('liszt:updated');	
+
+			$("#id_group").on('change',function(e) { 
+				e.preventDefault();
+				var gid = $("#id_group").val();
+				$.post( "{% url 'listProjects_json' %}", { group_id: gid }, function( data ) {
+			  			console.log("data",data)
+				  		$("#id_project").empty();
+				    	for (i = 0; i < data.length; i++) {
+							$("#id_project").append($("<option />").val(data[i]["id"]).text(data[i]["name"]));				
+						}
+						$("#id_project").trigger("chosen:updated");
+						$('#id_project').val('').trigger('liszt:updated');
+
+						$.post( "{% url 'listDatasets_json' %}", { group_id: gid, project_id: data[0]["id"] }, function( datasets ) {
+				  			console.log("datasets",datasets)
+					  		$("#id_dataset").empty();
+					    	for (i = 0; i < datasets.length; i++) {
+								$("#id_dataset").append($("<option />").val(datasets[i]["id"]).text(datasets[i]["name"]));				
+							}
+							$("#id_dataset").trigger("chosen:updated");
+							$('#id_dataset').val('').trigger('liszt:updated');							
+						}, "json");
+			  	},"json");
+			});			
+
+			$("#id_project").on('change',function(e) { 
+				e.preventDefault();
+				var gid = $("#id_group").val(),
+					pid = $("#id_project").val();
+				$.post( "{% url 'listDatasets_json' %}", { group_id: gid, project_id: pid }, function( datasets ) {
+		  			console.log("datasets",datasets)
+			  		$("#id_dataset").empty();
+			    	for (i = 0; i < datasets.length; i++) {
+						$("#id_dataset").append($("<option />").val(datasets[i]["id"]).text(datasets[i]["name"]));				
+					}
+					$("#id_dataset").trigger("chosen:updated");
+					$('#id_dataset').val('').trigger('liszt:updated');							
+				}, "json");
+			});							
 		});
 	</script>	
 
