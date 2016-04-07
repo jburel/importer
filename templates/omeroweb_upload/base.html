@@ -4,12 +4,19 @@
 {% block link %}
     {{ block.super }}
     <link rel="stylesheet" href="{% static "webadmin/css/dusty.css"|add:url_suffix %}" type="text/css" media="screen"/>
+    <link rel="stylesheet" href="{% static 'omeroweb_upload/3rd party/blueimp/css/jquery.fileupload.css' %}" type="text/css" media="screen">
+    <link rel="stylesheet" href="{% static 'omeroweb_upload/3rd party/blueimp/css/jquery.fileupload-ui.css' %}" type="text/css" media="screen">    
 {% endblock %}
 
 {% block script %}
 	{{ block.super }}      
-	<script type="text/javascript" src="{% static 'incident/js/plupload.full.min.js' %}"></script>
-	<script type="text/javascript" src="{% static 'incident/jquery.plupload.queue/jquery.plupload.queue.min.js' %}"></script>    
+	<script type="text/javascript" src="{% static 'omeroweb_upload/3rd party/blueimp/js/jquery.fileupload.js' %}"></script>
+	<script type="text/javascript" src="{% static 'omeroweb_upload/3rd party/blueimp/js/jquery.fileupload-ui.js' %}"></script>	
+	<script type="text/javascript" src="{% static 'omeroweb_upload/3rd party/blueimp/js/jquery.fileupload-jquery-ui.js' %}"></script>	
+	<script type="text/javascript" src="{% static 'omeroweb_upload/3rd party/blueimp/js/jquery.fileupload-process.js' %}"></script>		
+	<script type="text/javascript" src="{% static 'omeroweb_upload/3rd party/blueimp/js/jquery.fileupload-image.js' %}"></script>	
+	<script type="text/javascript" src="{% static 'omeroweb_upload/3rd party/blueimp/js/jquery.fileupload-validate.js' %}"></script>	
+  
 	<!--[if lte IE 8]>
 		<link rel="stylesheet" type="text/css" href="{% static "webgateway/css/ome.table_ie.css"|add:url_suffix %}" />
 	<![endif]-->    
