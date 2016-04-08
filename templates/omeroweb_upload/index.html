@@ -46,13 +46,15 @@
 	        {{ upload_form.non_field_errors }}
 	        {% for field in upload_form %}
 	            {% if field.errors %}<div style="clear:both">{{ field.errors }}</div>{% endif %}
-	            {% if field.label_tag != upload_form.date.label_tag %}
+				{% if field.label_tag == upload_form.file.label_tag %}
+					{{ field }}
+	            {% elif field.label_tag != upload_form.date.label_tag %}
 		            <span class="required">{{ field.label_tag }}</span>
 		            {{ field }}
-		        {% else %}
-		        	{{ field }}
+	            {% else %}
+				    {{ field }}
 		        {% endif %}
-	            </br>
+		        </br>
 	        {% endfor %}
 	        </br>
 			<input type="submit" value="{% trans 'Start upload' %}" />

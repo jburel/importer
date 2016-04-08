@@ -26,6 +26,13 @@ class DatasetForm(forms.Form):
 	dataset = ChoiceField(required=True,choices=())
 
 class UploadForm(forms.Form):  	
+	def __init__(self, projects=None, *args, **kwargs):
+		super(UploadForm, self).__init__(*args, **kwargs)
+		self.fields['file'].widget.attrs.update({'class' : 'jfilestyle'})
+		self.fields['file'].widget.attrs.update({'data-theme' : 'blue'})
+		self.fields['file'].widget.attrs.update({'data-buttonBefore':'true'})
+		self.fields['file'].widget.attrs.update({'data-inputSize':'400px'})
+
 	date = DateTimeField(initial=datetime.date.today,required=True,\
 		widget=DateTimeInput(attrs={'style': 'display:none;'}))
 	email = EmailField(widget=TextInput(attrs={'placeholder':'Email'}),required=True)

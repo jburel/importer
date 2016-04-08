@@ -3,19 +3,15 @@
 
 {% block link %}
     {{ block.super }}
-    <link rel="stylesheet" href="{% static "webadmin/css/dusty.css"|add:url_suffix %}" type="text/css" media="screen"/>
-    <link rel="stylesheet" href="{% static 'omeroweb_upload/3rd party/blueimp/css/jquery.fileupload.css' %}" type="text/css" media="screen">
-    <link rel="stylesheet" href="{% static 'omeroweb_upload/3rd party/blueimp/css/jquery.fileupload-ui.css' %}" type="text/css" media="screen">    
+    <link rel="stylesheet" href="{% static "webadmin/css/dusty.css"|add:url_suffix %}" type="text/css" media="screen"/>  
+    <link rel="stylesheet" href="{% static 'omeroweb_upload/3rdparty/filestyle/css/jquery-filestyle.min.css' %}" type="text/css" media="screen"/>   
 {% endblock %}
 
 {% block script %}
-	{{ block.super }}      
-	<script type="text/javascript" src="{% static 'omeroweb_upload/3rd party/blueimp/js/jquery.fileupload.js' %}"></script>
-	<script type="text/javascript" src="{% static 'omeroweb_upload/3rd party/blueimp/js/jquery.fileupload-ui.js' %}"></script>	
-	<script type="text/javascript" src="{% static 'omeroweb_upload/3rd party/blueimp/js/jquery.fileupload-jquery-ui.js' %}"></script>	
-	<script type="text/javascript" src="{% static 'omeroweb_upload/3rd party/blueimp/js/jquery.fileupload-process.js' %}"></script>		
-	<script type="text/javascript" src="{% static 'omeroweb_upload/3rd party/blueimp/js/jquery.fileupload-image.js' %}"></script>	
-	<script type="text/javascript" src="{% static 'omeroweb_upload/3rd party/blueimp/js/jquery.fileupload-validate.js' %}"></script>	
+	{{ block.super }}     
+		<script type="text/javascript" src="{% static 'omeroweb_upload/3rdparty/filestyle/js/jquery-filestyle.min.js' %}"></script> 
+		<script type="text/javascript" src="{% static 'omeroweb_upload/3rdparty/plupload/js/plupload.full.min.js' %}"></script>
+		<script type="text/javascript" src="{% static 'omeroweb_upload/3rdparty/plupload/js/jquery.plupload.queue/jquery.plupload.queue.min.js' %}"></script>	
   
 	<!--[if lte IE 8]>
 		<link rel="stylesheet" type="text/css" href="{% static "webgateway/css/ome.table_ie.css"|add:url_suffix %}" />
@@ -69,6 +65,137 @@
 				}, "json");
 			});							
 		});
+	</script>	
+	<script type="text/javascript">
+		 
+		var uploader = new plupload.Uploader({
+		    runtimes : 'html5,flash,silverlight,html4',
+		     
+		    browse_button : 'id_file', // you can pass in id...
+		    drop_element : 'container',
+		    //container: document.getElementById('drop-target'), // ... or DOM Element itself
+		     
+		    url : "{% url 'upload' %}",
+ 
+		    max_file_count: 1,
+	        max_file_size : '10mb',
+
+	        chunk_size: '1mb',
+		     
+		    filters : {
+		        max_file_size : '10mb',
+		        mime_types: [
+		            {title : "Image files", extensions : "tif,tiff,nd2,jpg,gif,png"},
+		            {title : "Zip files", extensions : "zip"}
+		        ]
+		    },
+
+		    // Views to activate
+	        views: {
+	            list: true,
+	            thumbs: true, // Show thumbs
+	            active: 'thumbs'
+	        },
+
+			multipart_params : {
+				"date": $("#id_date").val(),
+			    "group" : $("#id_group").val(),
+			    "project" : $("#id_project").val(),
+			    "dataset": $("#id_dataset").val(),
+				"file": $("#id_file").val()
+			},
+
+		    headers : {'X-Requested-With' : 'XMLHttpRequest', 'X-CSRFToken' : '{{csrf_token}}'},
+		 
+		    // Flash settings
+		    flash_swf_url : '/3rdparty/plupload/js/Moxie.swf',
+		 
+		    // Silverlight settings
+		    silverlight_xap_url : '/3rdparty/plupload/js/Moxie.xap',
+		     
+		 	preinit: saveCallback,
+
+		    init: {
+		        PostInit: function() {
+		            //document.getElementById('filelist').innerHTML = '';
+		 			document.getElementById('selected').value = '';
+		        },
+		 
+		        FilesAdded: function(up, files) {
+		            /*plupload.each(files, function(file) {
+		                document.getElementById('filelist').innerHTML += '<div id="' + file.id + '">' + file.name + ' (' + plupload.formatSize(file.size) + ') <b></b></div>';
+		            });*/
+		            plupload.each(files, function(file) {
+		                document.getElementById('selected').value = file.name + ' (' + plupload.formatSize(file.size) + ') ';
+		            });
+		        },
+
+	            FileUploaded: function(up, file, info) {
+	                document.getElementById('selected').value = '';
+	            },
+		 
+		        UploadProgress: function(up, file) {
+		            /*document.getElementById(file.id).getElementsByTagName('b')[0].innerHTML = '<span>' + file.percent + "%</span>";*/
+		            document.getElementById('selected').value = file.name + ' (' + plupload.formatSize(file.size) + ')  ' + file.percent + '%';
+		        },
+		 
+		        Error: function(up, err) {
+		            document.getElementById('console').innerHTML += "\nError #" + err.code + ": " + err.message;
+		        }
+		    }
+		});
+
+		function getCookie(name) {
+		    var cookieValue = null;
+		    if (document.cookie && document.cookie != '') {
+		        var cookies = document.cookie.split(';');
+		        for (var i = 0; i < cookies.length; i++) {
+		            var cookie = jQuery.trim(cookies[i]);
+		            // Does this cookie string begin with the name we want?
+		            if (cookie.substring(0, name.length + 1) == (name + '=')) {
+		                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+		                break;
+		            }
+		        }
+		    }
+		    return cookieValue;
+		}
+		var csrftoken = getCookie('csrftoken');
+
+		function csrfSafeMethod(method) {
+		    // these HTTP methods do not require CSRF protection
+		    return (/^(GET|HEAD|OPTIONS|TRACE)$/.test(method));
+		}
+		$.ajaxSetup({
+		    beforeSend: function(xhr, settings) {
+		        if (!csrfSafeMethod(settings.type) && !this.crossDomain) {
+		            xhr.setRequestHeader("X-CSRFToken", csrftoken);
+		        }
+		    }
+		});
+		 
+		uploader.init();
+		$('#upload').submit(function(e) {  
+
+		       // Validate number of uploaded files  
+		       if (uploader.total.uploaded == 0) {  
+		           // Files in queue upload them first  
+		           e.preventDefault();
+		           if (uploader.files.length > 0) { 
+		               // When all files are uploaded submit form  
+		               uploader.bind('UploadProgress', function() {  
+		                   if (uploader.total.uploaded == uploader.files.length)  
+		                       $('upload').submit();  
+		               });  
+		               uploader.start();  
+		           } else {  
+		               e.preventDefault();
+		               saveIncident();  
+		           }    
+		       }  
+		   });
+
+		 
 	</script>	
 
 {% endblock %}    
