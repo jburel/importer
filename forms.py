@@ -25,22 +25,21 @@ class DatasetForm(forms.Form):
 
 	dataset = ChoiceField(required=True,choices=())
 
-class UploadForm(forms.Form):  	
-	def __init__(self, projects=None, *args, **kwargs):
-		super(UploadForm, self).__init__(*args, **kwargs)
-		self.fields['file'].widget.attrs.update({'class' : 'jfilestyle'})
-		self.fields['file'].widget.attrs.update({'data-theme' : 'blue'})
-		self.fields['file'].widget.attrs.update({'data-buttonBefore':'true'})
-		self.fields['file'].widget.attrs.update({'data-inputSize':'400px'})
+# class UploadForm(forms.Form):  	
+# 	# def __init__(self, projects=None, *args, **kwargs):
+# 	# 	super(UploadForm, self).__init__(*args, **kwargs)
+# 	# 	self.fields['file'].widget.attrs.update({'class' : 'jfilestyle'})
+# 	# 	self.fields['file'].widget.attrs.update({'data-theme' : 'blue'})
+# 	# 	self.fields['file'].widget.attrs.update({'data-buttonBefore':'false'})
+# 	# 	self.fields['file'].widget.attrs.update({'data-inputSize':'400px'})	
 
-	date = DateTimeField(initial=datetime.date.today,required=True,\
-		widget=DateTimeInput(attrs={'style': 'display:none;'}))
-	email = EmailField(widget=TextInput(attrs={'placeholder':'Email'}),required=True)
-	file = FileField() 
+# 	date = DateTimeField(initial=datetime.date.today,required=True,\
+# 		widget=DateTimeInput(attrs={'style': 'display:none;'}))
+# 	#file = FileField(required=True) 
 
-	def save(self, temp_file, uploaded_file):  
-		print 'File "%s" would presumably be saved to disk now.' % uploaded_file  
-		pass
+# 	def save(self, temp_file, uploaded_file):  
+# 		print 'File "%s" would presumably be saved to disk now.' % uploaded_file  
+# 		pass
        
 class FeedbackForm(forms.Form):
 	name = CharField(initial='Your name',required=True)

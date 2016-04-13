@@ -3,205 +3,57 @@
 
 {% block link %}
     {{ block.super }}
-    <link rel="stylesheet" href="{% static "webadmin/css/dusty.css"|add:url_suffix %}" type="text/css" media="screen"/>  
-    <link rel="stylesheet" href="{% static 'omeroweb_upload/3rdparty/filestyle/css/jquery-filestyle.min.css' %}" type="text/css" media="screen"/>   
+    <link rel="stylesheet" href="{% static "webgateway/css/ome.table.css"|add:url_suffix %}" type="text/css" media="screen"/>
+    <style type="text/css">
+    	#groups, #projects, #datasets {
+    		display: inline-block;
+    	}
+    	#filelist {
+    		padding-top: 30px;
+    	}
+		.bluebtn {
+			display: inline-block;
+		    background: #fff -moz-linear-gradient(center top , hsl(210, 40%, 70%) 0%, hsl(210, 40%, 60%) 100%) repeat scroll 0 0;
+		    border-color: hsl(210, 40%, 50%) hsl(210, 40%, 40%) hsl(210, 40%, 35%);
+		    border-radius: 3px;
+		    border-style: solid;
+		    border-width: 1px;
+		    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.2) inset, 0 1px 1px rgba(0, 0, 0, 0.3);
+		    color: hsl(210, 70%, 10%);
+		    cursor: pointer;
+		    font-family: Helvetica,Arial;
+		    font-size: 1.3em;
+		    font-weight: bold;
+		    margin-right: 2px;
+		    padding: 5px 20px;
+		    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.3);
+		}
+		.bluebtn:hover {
+		    background-image: -moz-linear-gradient(center top , hsl(210, 40%, 76%) 0%, hsl(210, 40%, 60%) 100%);
+		}
+		.bluebtn:active, .bluebtn:focus {
+		    background-image: -moz-linear-gradient(center top , hsl(210, 40%, 60%) 0%, hsl(210, 40%, 65%) 100%);
+		    border: 1px solid hsl(210, 40%, 40%);
+		    box-shadow: none;
+		}
+    </style>
 {% endblock %}
 
-{% block script %}
-	{{ block.super }}     
-		<script type="text/javascript" src="{% static 'omeroweb_upload/3rdparty/filestyle/js/jquery-filestyle.min.js' %}"></script> 
-		<script type="text/javascript" src="{% static 'omeroweb_upload/3rdparty/plupload/js/plupload.full.min.js' %}"></script>
-		<script type="text/javascript" src="{% static 'omeroweb_upload/3rdparty/plupload/js/jquery.plupload.queue/jquery.plupload.queue.min.js' %}"></script>	
-  
-	<!--[if lte IE 8]>
-		<link rel="stylesheet" type="text/css" href="{% static "webgateway/css/ome.table_ie.css"|add:url_suffix %}" />
-	<![endif]-->    
-	<script type="text/javascript">
-		$(document).ready(function() {
-			$("#id_group").chosen({disable_search_threshold: 10,width: "200px"});
-			$("#id_project").chosen({disable_search_threshold: 10,width: "200px"});
-			$("#id_dataset").chosen({disable_search_threshold: 10,width: "200px"});
-
-			$("#id_group").val($("#id_group option:first").val());
-			$("#id_group").trigger("chosen:updated");
-			$('#id_group').val('').trigger('liszt:updated');	
-
-			$("#id_group").on('change',function(e) { 
-				e.preventDefault();
-				var gid = $("#id_group").val();
-				$.post( "{% url 'listProjects_json' %}", { group_id: gid }, function( data ) {
-			  			console.log("data",data)
-				  		$("#id_project").empty();
-				    	for (i = 0; i < data.length; i++) {
-							$("#id_project").append($("<option />").val(data[i]["id"]).text(data[i]["name"]));				
-						}
-						$("#id_project").trigger("chosen:updated");
-						$('#id_project').val('').trigger('liszt:updated');
-
-						$.post( "{% url 'listDatasets_json' %}", { group_id: gid, project_id: data[0]["id"] }, function( datasets ) {
-				  			console.log("datasets",datasets)
-					  		$("#id_dataset").empty();
-					    	for (i = 0; i < datasets.length; i++) {
-								$("#id_dataset").append($("<option />").val(datasets[i]["id"]).text(datasets[i]["name"]));				
-							}
-							$("#id_dataset").trigger("chosen:updated");
-							$('#id_dataset').val('').trigger('liszt:updated');							
-						}, "json");
-			  	},"json");
-			});			
-
-			$("#id_project").on('change',function(e) { 
-				e.preventDefault();
-				var gid = $("#id_group").val(),
-					pid = $("#id_project").val();
-				$.post( "{% url 'listDatasets_json' %}", { group_id: gid, project_id: pid }, function( datasets ) {
-		  			console.log("datasets",datasets)
-			  		$("#id_dataset").empty();
-			    	for (i = 0; i < datasets.length; i++) {
-						$("#id_dataset").append($("<option />").val(datasets[i]["id"]).text(datasets[i]["name"]));				
-					}
-					$("#id_dataset").trigger("chosen:updated");
-					$('#id_dataset').val('').trigger('liszt:updated');							
-				}, "json");
-			});							
-		});
-	</script>	
-	<script type="text/javascript">
-		 
-		var uploader = new plupload.Uploader({
-		    runtimes : 'html5,flash,silverlight,html4',
-		     
-		    browse_button : 'id_file', // you can pass in id...
-		    drop_element : 'container',
-		    //container: document.getElementById('drop-target'), // ... or DOM Element itself
-		     
-		    url : "{% url 'upload' %}",
- 
-		    max_file_count: 1,
-	        max_file_size : '10mb',
-
-	        chunk_size: '1mb',
-		     
-		    filters : {
-		        max_file_size : '10mb',
-		        mime_types: [
-		            {title : "Image files", extensions : "tif,tiff,nd2,jpg,gif,png"},
-		            {title : "Zip files", extensions : "zip"}
-		        ]
-		    },
-
-		    // Views to activate
-	        views: {
-	            list: true,
-	            thumbs: true, // Show thumbs
-	            active: 'thumbs'
-	        },
-
-			multipart_params : {
-				"date": $("#id_date").val(),
-			    "group" : $("#id_group").val(),
-			    "project" : $("#id_project").val(),
-			    "dataset": $("#id_dataset").val(),
-				"file": $("#id_file").val()
-			},
-
-		    headers : {'X-Requested-With' : 'XMLHttpRequest', 'X-CSRFToken' : '{{csrf_token}}'},
-		 
-		    // Flash settings
-		    flash_swf_url : '/3rdparty/plupload/js/Moxie.swf',
-		 
-		    // Silverlight settings
-		    silverlight_xap_url : '/3rdparty/plupload/js/Moxie.xap',
-		     
-		 	preinit: saveCallback,
-
-		    init: {
-		        PostInit: function() {
-		            //document.getElementById('filelist').innerHTML = '';
-		 			document.getElementById('selected').value = '';
-		        },
-		 
-		        FilesAdded: function(up, files) {
-		            /*plupload.each(files, function(file) {
-		                document.getElementById('filelist').innerHTML += '<div id="' + file.id + '">' + file.name + ' (' + plupload.formatSize(file.size) + ') <b></b></div>';
-		            });*/
-		            plupload.each(files, function(file) {
-		                document.getElementById('selected').value = file.name + ' (' + plupload.formatSize(file.size) + ') ';
-		            });
-		        },
-
-	            FileUploaded: function(up, file, info) {
-	                document.getElementById('selected').value = '';
-	            },
-		 
-		        UploadProgress: function(up, file) {
-		            /*document.getElementById(file.id).getElementsByTagName('b')[0].innerHTML = '<span>' + file.percent + "%</span>";*/
-		            document.getElementById('selected').value = file.name + ' (' + plupload.formatSize(file.size) + ')  ' + file.percent + '%';
-		        },
-		 
-		        Error: function(up, err) {
-		            document.getElementById('console').innerHTML += "\nError #" + err.code + ": " + err.message;
-		        }
-		    }
-		});
-
-		function getCookie(name) {
-		    var cookieValue = null;
-		    if (document.cookie && document.cookie != '') {
-		        var cookies = document.cookie.split(';');
-		        for (var i = 0; i < cookies.length; i++) {
-		            var cookie = jQuery.trim(cookies[i]);
-		            // Does this cookie string begin with the name we want?
-		            if (cookie.substring(0, name.length + 1) == (name + '=')) {
-		                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-		                break;
-		            }
-		        }
-		    }
-		    return cookieValue;
-		}
-		var csrftoken = getCookie('csrftoken');
-
-		function csrfSafeMethod(method) {
-		    // these HTTP methods do not require CSRF protection
-		    return (/^(GET|HEAD|OPTIONS|TRACE)$/.test(method));
-		}
-		$.ajaxSetup({
-		    beforeSend: function(xhr, settings) {
-		        if (!csrfSafeMethod(settings.type) && !this.crossDomain) {
-		            xhr.setRequestHeader("X-CSRFToken", csrftoken);
-		        }
-		    }
-		});
-		 
-		uploader.init();
-		$('#upload').submit(function(e) {  
-
-		       // Validate number of uploaded files  
-		       if (uploader.total.uploaded == 0) {  
-		           // Files in queue upload them first  
-		           e.preventDefault();
-		           if (uploader.files.length > 0) { 
-		               // When all files are uploaded submit form  
-		               uploader.bind('UploadProgress', function() {  
-		                   if (uploader.total.uploaded == uploader.files.length)  
-		                       $('upload').submit();  
-		               });  
-		               uploader.start();  
-		           } else {  
-		               e.preventDefault();
-		               saveIncident();  
-		           }    
-		       }  
-		   });
-
-		 
-	</script>	
-
-{% endblock %}    
 {% block content %}
     <div id="center_details">
         {% if ome.message %}<div class="error">{{ ome.message|safe|linebreaks }}</div>{% endif %}
         {% block center_details %}{% endblock %}
     </div>
 {% endblock %}
+
+{% block script %}
+	{{ block.super }}
+		<script type="text/javascript" src="{% static '3rdparty/jquery.tablesorter-2.0.3/jquery.tablesorter.js' %}"></script>
+		<script type="text/javascript" src="{% static 'omeroweb_upload/3rdparty/plupload/js/plupload.full.min.js' %}"></script>
+		<script type="text/javascript" src="{% static 'omeroweb_upload/3rdparty/plupload/js/jquery.plupload.queue/jquery.plupload.queue.min.js' %}"></script>	
+  
+	<!--[if lte IE 8]>
+		<link rel="stylesheet" type="text/css" href="{% static "webgateway/css/ome.table_ie.css"|add:url_suffix %}" />
+	<![endif]-->    	
+
+{% endblock %}    
