@@ -157,8 +157,7 @@ def list_groups(conn):
     for g in myGroups:
         conn.SERVICE_OPTS.setOmeroGroup(g.id)
         images = list(conn.getObjects("Image", params=params))
-        if len(images) == 0:
-            continue        # Don't display empty groups
+
         pCount = queryService.projection(query % 'Project', None, conn.SERVICE_OPTS)
         dCount = queryService.projection(query % 'Dataset', None, conn.SERVICE_OPTS)
         iCount = queryService.projection(query % 'Image', None, conn.SERVICE_OPTS)
@@ -167,8 +166,7 @@ def list_groups(conn):
                 'description': g.getDescription(),
                 'projectCount': pCount[0][0]._val,
                 'datasetCount': dCount[0][0]._val,
-                'imageCount': iCount[0][0]._val,
-                'image': len(images) > 0 and images[0] or None})  
+                'imageCount': iCount[0][0]._val})  
     #reset to first group
     conn.SERVICE_OPTS.setOmeroGroup(myGroups[0].id)
     return groups
