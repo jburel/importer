@@ -270,7 +270,7 @@ def upload(request, conn=None, **kwargs):
         context['project_form'] = pform        
         context['dataset_form'] = dform                
         context['page_size'] = settings.PAGE
-        context['template'] = 'omeroweb_upload/index.html'
+        context['template'] = 'importer/index.html'
         return context
 
 @login_required()

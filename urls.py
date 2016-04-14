@@ -1,5 +1,5 @@
 from django.conf.urls import *
-from omeroweb_upload import views
+from importer import views
 
 urlpatterns = patterns('django.views.generic.simple',
 
