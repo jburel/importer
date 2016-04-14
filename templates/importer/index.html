@@ -1,0 +1,278 @@
+{% extends "omeroweb_upload/base.html" %}
+{% load i18n %}
+
+{% block title %}
+    omeroweb.upload
+{% endblock %}
+
+{% block center_details %}
+	<div class="standard_form settings_form">
+		<form id="groups" >{% csrf_token %}
+	        {{ group_form.errors }}
+	        {{ group_form.non_field_errors }}
+	        <p>{% trans "Fields marked in red are mandatory." %}</p>
+	        {% for field in group_form %}
+	            {% if field.errors %}<div style="clear:both">{{ field.errors }}</div>{% endif %}
+	            <span class="required">{{ field.label_tag }}</span>
+	            {{ field }}
+	            </br>
+	        {% endfor %}
+	        </br>
+		</form>
+		<form id="projects" >{% csrf_token %}
+	        {{ project_form.errors }}
+	        {{ project_form.non_field_errors }}
+	        {% for field in project_form %}
+	            {% if field.errors %}<div style="clear:both">{{ field.errors }}</div>{% endif %}
+	            <span class="required">{{ field.label_tag }}</span>
+	            {{ field }}
+	            </br>
+	        {% endfor %}
+	        </br>
+		</form>
+		<form id="datasets" >{% csrf_token %}
+	        {{ dataset_form.errors }}
+	        {{ dataset_form.non_field_errors }}
+	        {% for field in dataset_form %}
+	            {% if field.errors %}<div style="clear:both">{{ field.errors }}</div>{% endif %}
+	            <span class="required">{{ field.label_tag }}</span>
+	            {{ field }}
+	            </br>
+	        {% endfor %}
+	        </br>
+		</form>		
+		<form id="upload" action="{% url 'upload' %}" method="POST" enctype="multipart/form-data">{% csrf_token %}	 
+
+		</form>
+		<div id="container">
+		    <button class="bluebtn" id="pickfiles">Select files</button>
+		    <button class="bluebtn" id="clearfiles">Clear files</button>
+			<button class="bluebtn" id="uploadfiles" type="submit">{% trans 'Start upload' %}</button>			    
+		</div>
+		<div id="filelist">
+			<table class="tablesorter tablesorter_basic" id="file-table">
+				<thead>
+					<tr>
+						<th class="header">id</th>
+						<th class="header">Filename</th>
+						<th class="header">Size</th>
+						<th class="header">Progess</th>
+						<th class="header"></th>
+					</tr>
+				</thead>
+				<tbody>
+				</tbody>
+			</table>
+		</div>
+		<br />
+		<pre id="console"></pre>
+	</div>
+
+	<script type="text/javascript">
+		$("#id_group").chosen({disable_search_threshold: 10,width: "200px"});
+		$("#id_project").chosen({disable_search_threshold: 10,width: "200px"});
+		$("#id_dataset").chosen({disable_search_threshold: 10,width: "200px"});
+
+		$("#id_group").val($("#id_group option:first").val());
+		$("#id_group").trigger("chosen:updated");	
+
+		$("#id_group").on('change',function(e) { 
+			e.preventDefault();
+			var gid = $("#id_group").val();
+			console.log(gid)
+			$.post( "{% url 'listProjects_json' %}", { group_id: gid }, function( data ) {
+			  		$("#id_project").empty();
+			    	for (i = 0; i < data.length; i++) {
+						$("#id_project").append($("<option />").val(data[i]["id"]).text(data[i]["name"]));				
+					}
+					$("#id_project").trigger("chosen:updated");
+
+					$.post( "{% url 'listDatasets_json' %}", { group_id: gid, project_id: data[0]["id"] }, function( datasets ) {
+				  		$("#id_dataset").empty();
+				    	for (i = 0; i < datasets.length; i++) {
+							$("#id_dataset").append($("<option />").val(datasets[i]["id"]).text(datasets[i]["name"]));				
+						}
+						$("#id_dataset").trigger("chosen:updated");							
+					}, "json");			
+		  	},"json");
+		});			
+
+		$("#id_project").on('change',function(e) { 
+			e.preventDefault();
+			var gid = $("#id_group").val(),
+				pid = $("#id_project").val();
+			$.post( "{% url 'listDatasets_json' %}", { group_id: gid, project_id: pid }, function( datasets ) {
+	  			console.log("datasets",datasets)
+		  		$("#id_dataset").empty();
+		    	for (i = 0; i < datasets.length; i++) {
+					$("#id_dataset").append($("<option />").val(datasets[i]["id"]).text(datasets[i]["name"]));				
+				}
+				$("#id_dataset").trigger("chosen:updated");		
+			}, "json");
+		});		
+
+		$("#clearfiles").click(function() {
+			$("#file-table tbody").empty();
+		}); 
+
+		var uploader = new plupload.Uploader({
+		    runtimes : 'html5,flash,silverlight,html4',
+		     
+		    browse_button : 'pickfiles', // you can pass in id...
+		    drop_element : 'container',
+		    //container: document.getElementById('drop-target'), // ... or DOM Element itself
+		     
+		    url : "{% url 'upload' %}",
+ 
+		    max_file_count: 1,
+	        max_file_size : '10mb',
+
+	        chunk_size: '1mb',
+		     
+		    filters : {
+		        max_file_size : '10mb',
+		        mime_types: [
+		            {title : "Image files", extensions : "tif,tiff,nd2,jpg,gif,png"},
+		            {title : "Zip files", extensions : "zip"}
+		        ]
+		    },
+
+		    // Views to activate
+	        views: {
+	            list: true,
+	            thumbs: true, // Show thumbs
+	            active: 'thumbs'
+	        },
+
+			multipart_params : {
+			    "group" : $("#id_group").val(),
+			    "project" : $("#id_project").val(),
+			    "dataset": $("#id_dataset").val(),
+			},	        
+
+		    headers : {'X-Requested-With' : 'XMLHttpRequest', 'X-CSRFToken' : '{{csrf_token}}'},
+		 
+		    // Flash settings
+		    flash_swf_url : '/plupload/js/Moxie.swf',
+		 
+		    // Silverlight settings
+		    silverlight_xap_url : '/plupload/js/Moxie.xap',
+		     
+		 
+		    init: {
+		        PostInit: function() {
+		            document.getElementById('filelist').style.display = 'None';
+
+		            document.getElementById('uploadfiles').onclick = function() {
+			            var group = $("#id_group").val(),
+			            	dataset = $("#id_dataset").val();
+			            console.log("group",group,"dataset",dataset)
+			 			uploader.settings.multipart_params.group = group;
+			 			uploader.settings.multipart_params.dataset = dataset;
+		                uploader.start();
+		                return false;
+		            };
+		        },
+		 
+		        FilesAdded: function(up, files) {
+		            plupload.each(files, function(file) {
+		            	document.getElementById('filelist').style.display = 'Block';
+		                //document.getElementById('filelist').innerHTML += '<div id="' + file.id + '">' + file.name + ' (' + plupload.formatSize(file.size) + ') <b></b></div>';
+						var tableRef = document.getElementById('file-table').getElementsByTagName('tbody')[0];
+
+						// Insert a row in the table at the last row
+						var newRow   = tableRef.insertRow(tableRef.rows.length);
+
+						// create delete button
+						var btn = document.createElement('input');
+						btn.type = "button";
+						btn.className = "btn silver";
+						btn.value = "delete";
+						//btn.onclick = (function(entry) {return function() {chooseUser(entry);}})(entry);
+
+						var cells = [file.id,file.name,file.size,"progress",btn];
+						for (c = 0; c < 5; c++) {
+							cell = newRow.insertCell(c);
+							if (c < 4) {
+								cell.appendChild(document.createTextNode(cells[c]));
+							}
+							else {
+								cell.id = "delete_"+cells[0];
+								cell.appendChild(cells[c]);
+							}
+							if (c == 3){
+								cell.id = "progress_"+cells[0];
+							}
+						}	                
+		            });
+		        },
+		 
+		        UploadProgress: function(up, file) {
+		        	//console.log(document.getElementById("progress_"+file.id).innerHTML)
+		            document.getElementById("progress_"+file.id).innerHTML = file.percent+"%";
+		        },
+		 
+		        Error: function(up, err) {
+		            document.getElementById('console').innerHTML += "\nError #" + err.code + ": " + err.message;
+		        }
+		    }
+		});
+
+		function getCookie(name) {
+		    var cookieValue = null;
+		    if (document.cookie && document.cookie != '') {
+		        var cookies = document.cookie.split(';');
+		        for (var i = 0; i < cookies.length; i++) {
+		            var cookie = jQuery.trim(cookies[i]);
+		            // Does this cookie string begin with the name we want?
+		            if (cookie.substring(0, name.length + 1) == (name + '=')) {
+		                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+		                break;
+		            }
+		        }
+		    }
+		    return cookieValue;
+		}
+		var csrftoken = getCookie('csrftoken');
+
+		function csrfSafeMethod(method) {
+		    // these HTTP methods do not require CSRF protection
+		    return (/^(GET|HEAD|OPTIONS|TRACE)$/.test(method));
+		}
+		$.ajaxSetup({
+		    beforeSend: function(xhr, settings) {
+		        if (!csrfSafeMethod(settings.type) && !this.crossDomain) {
+		            xhr.setRequestHeader("X-CSRFToken", csrftoken);
+		        }
+		    }
+		});
+		 
+		uploader.init();
+		$('#upload').submit(function(e) {  
+	            var group = $("#id_group").val(),
+	            	dataset = $("#id_dataset").val();
+	            console.log("group",group,"dataset",dataset)
+	 			uploader.settings.multipart_params.group = group;
+	 			uploader.settings.multipart_params.dataset = dataset;
+
+		       // Validate number of uploaded files  
+		       if (uploader.total.uploaded == 0) {  
+		           // Files in queue upload them first  
+		           e.preventDefault();
+		           if (uploader.files.length > 0) { 
+		               // When all files are uploaded submit form  
+		               uploader.bind('UploadProgress', function() {  
+		                   if (uploader.total.uploaded == uploader.files.length)  
+		                       $('#upload').submit();  
+		               });  
+		               uploader.start();  
+		           } else {  
+		               e.preventDefault();
+		               saveIncident();  
+		           }    
+		       }  
+		   });
+
+		 
+	</script>	
+{% endblock %}

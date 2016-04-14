@@ -1,0 +1,59 @@
+{% extends "webclient/base/base_container.html" %}
+{% load i18n %}
+
+{% block link %}
+    {{ block.super }}
+    <link rel="stylesheet" href="{% static "webgateway/css/ome.table.css"|add:url_suffix %}" type="text/css" media="screen"/>
+    <style type="text/css">
+    	#groups, #projects, #datasets {
+    		display: inline-block;
+    	}
+    	#filelist {
+    		padding-top: 30px;
+    	}
+		.bluebtn {
+			display: inline-block;
+		    background: #fff -moz-linear-gradient(center top , hsl(210, 40%, 70%) 0%, hsl(210, 40%, 60%) 100%) repeat scroll 0 0;
+		    border-color: hsl(210, 40%, 50%) hsl(210, 40%, 40%) hsl(210, 40%, 35%);
+		    border-radius: 3px;
+		    border-style: solid;
+		    border-width: 1px;
+		    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.2) inset, 0 1px 1px rgba(0, 0, 0, 0.3);
+		    color: hsl(210, 70%, 10%);
+		    cursor: pointer;
+		    font-family: Helvetica,Arial;
+		    font-size: 1.3em;
+		    font-weight: bold;
+		    margin-right: 2px;
+		    padding: 5px 20px;
+		    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.3);
+		}
+		.bluebtn:hover {
+		    background-image: -moz-linear-gradient(center top , hsl(210, 40%, 76%) 0%, hsl(210, 40%, 60%) 100%);
+		}
+		.bluebtn:active, .bluebtn:focus {
+		    background-image: -moz-linear-gradient(center top , hsl(210, 40%, 60%) 0%, hsl(210, 40%, 65%) 100%);
+		    border: 1px solid hsl(210, 40%, 40%);
+		    box-shadow: none;
+		}
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div id="center_details">
+        {% if ome.message %}<div class="error">{{ ome.message|safe|linebreaks }}</div>{% endif %}
+        {% block center_details %}{% endblock %}
+    </div>
+{% endblock %}
+
+{% block script %}
+	{{ block.super }}
+		<script type="text/javascript" src="{% static '3rdparty/jquery.tablesorter-2.0.3/jquery.tablesorter.js' %}"></script>
+		<script type="text/javascript" src="{% static 'omeroweb_upload/3rdparty/plupload/js/plupload.full.min.js' %}"></script>
+		<script type="text/javascript" src="{% static 'omeroweb_upload/3rdparty/plupload/js/jquery.plupload.queue/jquery.plupload.queue.min.js' %}"></script>	
+  
+	<!--[if lte IE 8]>
+		<link rel="stylesheet" type="text/css" href="{% static "webgateway/css/ome.table_ie.css"|add:url_suffix %}" />
+	<![endif]-->    	
+
+{% endblock %}    
