@@ -7,67 +7,95 @@
 
 {% block center_details %}
 	<div class="standard_form settings_form">
-		<form id="groups" >{% csrf_token %}
-	        {{ group_form.errors }}
-	        {{ group_form.non_field_errors }}
-	        <p>{% trans "Fields marked in red are mandatory." %}</p>
-	        {% for field in group_form %}
-	            {% if field.errors %}<div style="clear:both">{{ field.errors }}</div>{% endif %}
-	            <span class="required">{{ field.label_tag }}</span>
-	            {{ field }}
-	            </br>
-	        {% endfor %}
-	        </br>
-		</form>
-		<form id="projects" >{% csrf_token %}
-	        {{ project_form.errors }}
-	        {{ project_form.non_field_errors }}
-	        {% for field in project_form %}
-	            {% if field.errors %}<div style="clear:both">{{ field.errors }}</div>{% endif %}
-	            <span class="required">{{ field.label_tag }}</span>
-	            {{ field }}
-	            </br>
-	        {% endfor %}
-	        </br>
-		</form>
-		<form id="datasets" >{% csrf_token %}
-	        {{ dataset_form.errors }}
-	        {{ dataset_form.non_field_errors }}
-	        {% for field in dataset_form %}
-	            {% if field.errors %}<div style="clear:both">{{ field.errors }}</div>{% endif %}
-	            <span class="required">{{ field.label_tag }}</span>
-	            {{ field }}
-	            </br>
-	        {% endfor %}
-	        </br>
-		</form>		
-		<form id="upload" action="{% url 'upload' %}" method="POST" enctype="multipart/form-data">{% csrf_token %}	 
+		<div>
+			<form id="groups" >{% csrf_token %}
+		        {{ group_form.errors }}
+		        {{ group_form.non_field_errors }}
+		        <p>{% trans "Fields marked in red are mandatory." %}</p>
+		        {% for field in group_form %}
+		            {% if field.errors %}<div style="clear:both">{{ field.errors }}</div>{% endif %}
+		            <span class="required">{{ field.label_tag }}</span>
+		            {{ field }}
+		            </br>
+		        {% endfor %}
+		        </br>
+			</form>
+		</div>
+		<div>
+			<form id="projects" >{% csrf_token %}
+		        {{ project_form.errors }}
+		        {{ project_form.non_field_errors }}
+		        {% for field in project_form %}
+		            {% if field.errors %}<div style="clear:both">{{ field.errors }}</div>{% endif %}
+		            <span class="required">{{ field.label_tag }}</span>
+		            {{ field }}
+		            </br>
+		        {% endfor %}
+			</form>
 
-		</form>
-		<div id="container">
-		    <button class="bluebtn" id="pickfiles">Select files</button>
-		    <button class="bluebtn" id="clearfiles">Clear files</button>
-			<button class="bluebtn" id="uploadfiles" type="submit">{% trans 'Start upload' %}</button>			    
+			<span class="create"><button class="bluebtn" id="create-project">New...</button></span>
+
+			<form id="datasets" >{% csrf_token %}
+		        {{ dataset_form.errors }}
+		        {{ dataset_form.non_field_errors }}
+		        {% for field in dataset_form %}
+		            {% if field.errors %}<div style="clear:both">{{ field.errors }}</div>{% endif %}
+		            <span class="required">{{ field.label_tag }}</span>
+		            {{ field }}
+		            </br>
+		        {% endfor %}
+			</form>		
+
+			<span class="create"><button class="bluebtn" id="create-dataset">New...</button></span>
 		</div>
-		<div id="filelist">
-			<table class="tablesorter tablesorter_basic" id="file-table">
-				<thead>
-					<tr>
-						<th class="header">id</th>
-						<th class="header">Filename</th>
-						<th class="header">Size</th>
-						<th class="header">Progess</th>
-						<th class="header"></th>
-					</tr>
-				</thead>
-				<tbody>
-				</tbody>
-			</table>
+		<div id="upload-controls">
+			<form id="upload" action="{% url 'upload' %}" method="POST" enctype="multipart/form-data">{% csrf_token %}	 
+			</form>
+		
+			<div id="container">
+			    <button class="bluebtn" id="pickfiles">Select files</button>
+			    <button class="bluebtn" id="clearfiles">Clear files</button>
+				<button class="bluebtn" id="uploadfiles" type="submit">{% trans 'Start upload' %}</button>			    
+			</div>
+			<div id="filelist">
+				<table class="tablesorter tablesorter_basic" id="file-table">
+					<thead>
+						<tr>
+							<th class="header">id</th>
+							<th class="header">Filename</th>
+							<th class="header">Size</th>
+							<th class="header">Progess</th>
+							<th class="header"></th>
+						</tr>
+					</thead>
+					<tbody>
+					</tbody>
+				</table>
+			</div>
+			<br />
+			<pre id="console"></pre>
 		</div>
-		<br />
-		<pre id="console"></pre>
 	</div>
-
+	<div id="proj-dialog-form" title="Dialog form">
+		<div class="standard_form">
+			<form action="{% url 'create_project' %}" method="POST" enctype="multipart/form-data">{% csrf_token %}	
+				<label for="project-name">Project name:</label> 
+				<input id="project-name" type="text">
+				<label for="project-description">Description:</label> 
+				<textarea id="project-description" rows="5"></textarea>				
+			</form>
+		</div>
+	</div>
+	<div id="ds-dialog-form" title="Dialog form">
+		<div class="standard_form">
+			<form action="{% url 'create_dataset' %}" method="POST" enctype="multipart/form-data">{% csrf_token %}	
+				<label for="dataset-name">Dataset name:</label> 
+				<input id="dataset-name" type="text">
+				<label for="dataset-description">Description:</label> 
+				<textarea id="dataset-description" rows="5"></textarea>				
+			</form>
+		</div>
+	</div>
 	<script type="text/javascript">
 		$("#id_group").chosen({disable_search_threshold: 10,width: "200px"});
 		$("#id_project").chosen({disable_search_threshold: 10,width: "200px"});
@@ -115,6 +143,112 @@
 		$("#clearfiles").click(function() {
 			$("#file-table tbody").empty();
 		}); 
+
+		$(function() {
+			var proj_dialog, proj_form;
+
+			function addProject() {
+				var gid = gid = $("#id_group").val(),
+					name = $("#project-name").val(),
+					description = $("#project-description").val();
+				$.post("{% url 'create_project' %}", { group_id: gid, project_name: name, project_description: description}, function(data) {
+					$.post( "{% url 'listProjects_json' %}", { group_id: gid }, function( data ) {
+					  		$("#id_project").empty();
+					  		console.log(data)
+					    	for (i = 0; i < data.length; i++) {
+								$("#id_project").append($("<option />").val(data[i]["id"]).text(data[i]["name"]));				
+							}
+							$("#id_project").trigger("chosen:updated");
+
+							$.post( "{% url 'listDatasets_json' %}", { group_id: gid, project_id: data[0]["id"] }, function( datasets ) {
+						  		$("#id_dataset").empty();
+						    	for (i = 0; i < datasets.length; i++) {
+									$("#id_dataset").append($("<option />").val(datasets[i]["id"]).text(datasets[i]["name"]));				
+								}
+								$("#id_dataset").trigger("chosen:updated");							
+							}, "json");			
+				  	},"json");
+				}, "json");
+			}
+
+			proj_dialog = $( "#proj-dialog-form" ).dialog({
+			  autoOpen: false,
+			  height: 300,
+			  width: 350,
+			  modal: true,
+			  buttons: {
+			    "Create a project": addProject,
+			    Cancel: function() {
+			      dialog.dialog( "close" );
+			    }
+			  },
+			  close: function() {
+			    form[ 0 ].reset();
+			  }
+			});
+
+			proj_form = proj_dialog.find( "form" ).on( "submit", function( event ) {
+			  event.preventDefault();
+			  addProject();
+			});
+
+			$( "#create-project" ).button().on( "click", function() {
+			  proj_dialog.dialog( "open" );
+			});
+		});	
+
+		$(function() {
+			var ds_dialog, ds_form;
+
+			function addDataset() {
+				var gid = gid = $("#id_group").val(),
+					name = $("#project-name").val(),
+					description = $("#project-description").val();
+				$.post("{% url 'create_project' %}", { group_id: gid, project_name: name, project_description: description}, function(data) {
+					$.post( "{% url 'listProjects_json' %}", { group_id: gid }, function( data ) {
+					  		$("#id_project").empty();
+					  		console.log(data)
+					    	for (i = 0; i < data.length; i++) {
+								$("#id_project").append($("<option />").val(data[i]["id"]).text(data[i]["name"]));				
+							}
+							$("#id_project").trigger("chosen:updated");
+
+							$.post( "{% url 'listDatasets_json' %}", { group_id: gid, project_id: data[0]["id"] }, function( datasets ) {
+						  		$("#id_dataset").empty();
+						    	for (i = 0; i < datasets.length; i++) {
+									$("#id_dataset").append($("<option />").val(datasets[i]["id"]).text(datasets[i]["name"]));				
+								}
+								$("#id_dataset").trigger("chosen:updated");							
+							}, "json");			
+				  	},"json");
+				}, "json");
+			}
+
+			ds_dialog = $( "#ds-dialog-form" ).dialog({
+			  autoOpen: false,
+			  height: 300,
+			  width: 350,
+			  modal: true,
+			  buttons: {
+			    "Create a dataset": addDataset,
+			    Cancel: function() {
+			      dialog.dialog( "close" );
+			    }
+			  },
+			  close: function() {
+			    form[ 0 ].reset();
+			  }
+			});
+
+			ds_form = ds_dialog.find( "form" ).on( "submit", function( event ) {
+			  event.preventDefault();
+			  addDataset();
+			});
+
+			$( "#create-dataset" ).button().on( "click", function() {
+			  ds_dialog.dialog( "open" );
+			});
+		});	
 
 		var uploader = new plupload.Uploader({
 		    runtimes : 'html5,flash,silverlight,html4',

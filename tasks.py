@@ -36,7 +36,8 @@ def celery_import(conn, tempdir, filename, groupId, datasetId):
     cli.invoke(["sessions", "login", "-s", "localhost", "-k", "%s" % sessionId], strict=True)
     cli.invoke(["sessions", "group", "%s" % groupId], strict=True)    
     import_args = ["import"]
-    import_args.extend(["-d", str(datasetId)])
+    if datasetId is not None:
+        import_args.extend(["-d", str(datasetId)])
     import_args.append(filename)
     import_args.extend(["-s","localhost","-u","%s"%user.getName()])
     

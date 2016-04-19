@@ -5,8 +5,15 @@
     {{ block.super }}
     <link rel="stylesheet" href="{% static "webgateway/css/ome.table.css"|add:url_suffix %}" type="text/css" media="screen"/>
     <style type="text/css">
-    	#groups, #projects, #datasets {
+    	#groups, #projects, #datasets, #create-project, #create-dataset {
     		display: inline-block;
+    	}
+    	.create {
+    		margin-left: -40px;
+    		padding-right: 40px;
+    	}
+    	#upload-controls {
+    		padding-top: 30px;
     	}
     	#filelist {
     		padding-top: 30px;
@@ -35,6 +42,9 @@
 		    background-image: -moz-linear-gradient(center top , hsl(210, 40%, 60%) 0%, hsl(210, 40%, 65%) 100%);
 		    border: 1px solid hsl(210, 40%, 40%);
 		    box-shadow: none;
+		}
+		.small {
+			padding: 1px 10px;
 		}
     </style>
 {% endblock %}

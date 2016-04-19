@@ -7,5 +7,7 @@ urlpatterns = patterns('django.views.generic.simple',
      #url( r'^$', views.index, name='index' ),
      url( r'^$', views.upload, name='upload'),
      url( r'^listprojects$', views.listProjects_json, name='listProjects_json'),
-     url( r'^listdatasets$', views.listDatasets_json, name='listDatasets_json'),     
+     url( r'^listdatasets$', views.listDatasets_json, name='listDatasets_json'), 
+     url( r'^newproject$', views.create_project, name='create_project'), 
+     url( r'^newdataset$', views.create_dataset, name='create_dataset'),         
  )

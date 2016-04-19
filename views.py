@@ -23,7 +23,20 @@ from omero.gateway import OriginalFileWrapper
 from omeroweb.webclient.decorators import login_required, render_response
 
 TEMP_DIR = '/home/omero/temp/'
-JSON_FILEANN_NS = "omero.web.incident.json"
+
+def createDataset(conn, project, name, description=None, img_ids=None):
+    dsId = conn.createDataset(name, description, img_ids)
+    if project is not None:
+        l_ds = omero.model.ProjectDatasetLinkI()
+        l_ds.setParent(self.project._obj)
+        l_ds.setChild(omero.model.DatasetI(dsId, False))
+        # ds.addProjectDatasetLink(l_ds)
+        self.conn.saveAndReturnId(l_ds)
+    return dsId
+
+def createProject(conn, groupId, name, description=None):
+    conn.SERVICE_OPTS.setOmeroGroup(groupId)
+    return conn.createProject(name, description)
 
 def createOriginalFileFromFileObj(
         conn, fo, path, name, fileSize, mimetype=None, ns=None):
@@ -218,6 +231,8 @@ def upload(request, conn=None, **kwargs):
         groupId = request.POST['group']
         print "groupId from POST",groupId
         datasetId = request.POST['dataset']
+        if 'None' in datasetId:
+            datasetId = None
         print "datasetId from POST",datasetId       
         #tempdir = tempfile.mkdtemp(prefix='/home/omero/temp/')
         temp_file = os.path.join(TEMP_DIR, name)  
@@ -251,13 +266,14 @@ def upload(request, conn=None, **kwargs):
             gnames.append((g,gn))
 
         first_group = groups[0]
+        pnames = [("None","No projects")]
+        dnames = [("None","No datasets")]
         projects = list_projects(conn,first_group['id'])
         if projects:
             first_project = projects[0]
             project_names = list_object_names(projects)
             pids = list_object_ids(projects)
 
-            pnames = []
             for pn,p in zip(project_names,pids):
                 pnames.append((p,pn))            
                         
@@ -265,24 +281,17 @@ def upload(request, conn=None, **kwargs):
             if datasets:
                 dataset_names = list_object_names(datasets)
                 dids = list_object_ids(datasets)
-
-                dnames = []        
+      
                 for dn,d in zip(dataset_names,dids):
                     dnames.append((d,dn))
-            else:
-                dnames = (("None","Create a dataset first"),)
         else:
-            pnames = (("None","No projects"),)
             datasets = list_datasets(conn,first_group['id'],None)
             if datasets:
                 dataset_names = list_object_names(datasets)
                 dids = list_object_ids(datasets)
-
-                dnames = []        
+    
                 for dn,d in zip(dataset_names,dids):
                     dnames.append((d,dn))
-            else:
-                dnames = (("None","Create a dataset first"),)
 
         print "gnames",gnames
         print "pnames",pnames
@@ -304,12 +313,12 @@ def listDatasets_json(request, conn=None, **kwargs):
     if request.POST:
         gid = request.POST.get("group_id")
         pid = request.POST.get("project_id")
-        print "project_id",pid
+        datasets = [{'id':'None','name': 'No datasets'}]        
         if 'None' in pid:
-            rv = list_datasets(conn,gid,None)
+            datasets += list_datasets(conn,gid,None)
         else:
-            rv = list_datasets(conn,gid,pid)
-        data = json.dumps(rv)
+            datasets += list_datasets(conn,gid,pid)
+        data = json.dumps(datasets)
         return HttpResponse(data, content_type='application/json')
     else:
         rv = {'message':"failed"}
@@ -321,16 +330,51 @@ def listProjects_json(request, conn=None, **kwargs):
 
     if request.POST:
         gid = request.POST.get("group_id")
-        projects = list_projects(conn,gid)
-        if projects:
-            data = json.dumps(projects)
-        else:
-            data = json.dumps([{'id': 'None', 'name': 'No projects'}])
+        projects = [{'id':'None','name': 'No projects'}]
+        if list_projects(conn,gid):
+            projects += list_projects(conn,gid)
+        data = json.dumps(projects)
         return HttpResponse(data, content_type='application/json')
     else:
         rv = {'message':"failed"}
         error = json.dumps(rv)
         return HttpResponseBadRequest(error, content_type='application/json')
+
+@login_required()
+def create_project(request, conn=None, **kwargs):
+
+    if request.POST:
+        gid = request.POST.get("group_id")
+        name = request.POST.get("project_name")
+        description = request.POST.get("project_description")
+        pid = createProject(conn,gid,name,description)
+        projects = [{'id':'None','name': 'No projects'}]
+        if pid:
+            projects.append({'id': pid, 'name': name})
+        data = json.dumps(projects)
+        return HttpResponse(data, content_type='application/json')
+    else:
+        rv = {'message':"failed"}
+        error = json.dumps(rv)
+        return HttpResponseBadRequest(error, content_type='application/json')        
+
+@login_required()
+def create_dataset(request, conn=None, **kwargs):
+
+    if request.POST:
+        gid = request.POST.get("group_id")
+        name = request.POST.get("project_name")
+        description = request.POST.get("project_description")
+        pid = createProject(conn,gid,name,description)
+        projects = [{'id':'None','name': 'No projects'}]
+        if pid:
+            projects.append({'id': pid, 'name': name})
+        data = json.dumps(projects)
+        return HttpResponse(data, content_type='application/json')
+    else:
+        rv = {'message':"failed"}
+        error = json.dumps(rv)
+        return HttpResponseBadRequest(error, content_type='application/json') 
 
 # a view to be called from uploader when all files are completed
 # perhaps keep the image_ids in request.session
