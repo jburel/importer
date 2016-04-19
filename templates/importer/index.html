@@ -82,6 +82,7 @@
 			console.log(gid)
 			$.post( "{% url 'listProjects_json' %}", { group_id: gid }, function( data ) {
 			  		$("#id_project").empty();
+			  		console.log(data)
 			    	for (i = 0; i < data.length; i++) {
 						$("#id_project").append($("<option />").val(data[i]["id"]).text(data[i]["name"]));				
 					}

@@ -112,9 +112,17 @@ def list_object_names(objects):
 
 def list_datasets(conn,gid,project_id):
     conn.SERVICE_OPTS.setOmeroGroup(gid)
-    project = conn.getObject("Project", project_id)
+
+    if project_id:
+        project = conn.getObject("Project", project_id)
+        children = project.listChildren()
+    else:
+        params = omero.sys.ParametersI()
+        params.exp(conn.getUser().getId())  # only show current user's Datasets
+        children = conn.getObjects("Dataset", params=params)        
+
     datasets = []
-    for d in project.listChildren():
+    for d in children:
         ddata = {'id': d.getId(), 'name': d.getName()}
         ddata['description'] = d.getDescription()
         ddata['owner'] = d.getDetails().getOwner().getOmeName()
@@ -237,29 +245,48 @@ def upload(request, conn=None, **kwargs):
         groups = list_groups(conn)
         group_names = list_object_names(groups)
         gids = list_object_ids(groups)
+
         gnames = []
-
-        first_group = groups[0]
-        projects = list_projects(conn,first_group['id'])
-        project_names = list_object_names(projects)
-        pids = list_object_ids(projects)
-        pnames = []
-
-        first_project = projects[0]
-        datasets = list_datasets(conn,first_group['id'],first_project['id'])
-        dataset_names = list_object_names(datasets)
-        dids = list_object_ids(datasets)
-        dnames = []        
-
         for gn,g in zip(group_names,gids):
             gnames.append((g,gn))
 
-        for pn,p in zip(project_names,pids):
-            pnames.append((p,pn))
+        first_group = groups[0]
+        projects = list_projects(conn,first_group['id'])
+        if projects:
+            first_project = projects[0]
+            project_names = list_object_names(projects)
+            pids = list_object_ids(projects)
 
-        for dn,d in zip(dataset_names,dids):
-            dnames.append((d,dn))
+            pnames = []
+            for pn,p in zip(project_names,pids):
+                pnames.append((p,pn))            
+                        
+            datasets = list_datasets(conn,first_group['id'],first_project['id'])
+            if datasets:
+                dataset_names = list_object_names(datasets)
+                dids = list_object_ids(datasets)
 
+                dnames = []        
+                for dn,d in zip(dataset_names,dids):
+                    dnames.append((d,dn))
+            else:
+                dnames = (("None","Create a dataset first"),)
+        else:
+            pnames = (("None","No projects"),)
+            datasets = list_datasets(conn,first_group['id'],None)
+            if datasets:
+                dataset_names = list_object_names(datasets)
+                dids = list_object_ids(datasets)
+
+                dnames = []        
+                for dn,d in zip(dataset_names,dids):
+                    dnames.append((d,dn))
+            else:
+                dnames = (("None","Create a dataset first"),)
+
+        print "gnames",gnames
+        print "pnames",pnames
+        print "dnames",dnames
         gform = GroupForm(groups=gnames)
         pform = ProjectForm(projects=pnames)
         dform = DatasetForm(datasets=dnames)
@@ -277,7 +304,11 @@ def listDatasets_json(request, conn=None, **kwargs):
     if request.POST:
         gid = request.POST.get("group_id")
         pid = request.POST.get("project_id")
-        rv = list_datasets(conn,gid,pid)
+        print "project_id",pid
+        if 'None' in pid:
+            rv = list_datasets(conn,gid,None)
+        else:
+            rv = list_datasets(conn,gid,pid)
         data = json.dumps(rv)
         return HttpResponse(data, content_type='application/json')
     else:
@@ -290,8 +321,11 @@ def listProjects_json(request, conn=None, **kwargs):
 
     if request.POST:
         gid = request.POST.get("group_id")
-        rv = list_projects(conn,gid)
-        data = json.dumps(rv)
+        projects = list_projects(conn,gid)
+        if projects:
+            data = json.dumps(projects)
+        else:
+            data = json.dumps([{'id': 'None', 'name': 'No projects'}])
         return HttpResponse(data, content_type='application/json')
     else:
         rv = {'message':"failed"}
