@@ -24,14 +24,16 @@ from omeroweb.webclient.decorators import login_required, render_response
 
 TEMP_DIR = '/home/omero/temp/'
 
-def createDataset(conn, project, name, description=None, img_ids=None):
+def createDataset(conn, groupId, projectId, name, description=None, img_ids=None):
+    conn.SERVICE_OPTS.setOmeroGroup(groupId)
     dsId = conn.createDataset(name, description, img_ids)
-    if project is not None:
+    if projectId is not None:
+        project = conn.getObject("Project", projectId)
         l_ds = omero.model.ProjectDatasetLinkI()
-        l_ds.setParent(self.project._obj)
+        l_ds.setParent(project._obj)
         l_ds.setChild(omero.model.DatasetI(dsId, False))
         # ds.addProjectDatasetLink(l_ds)
-        self.conn.saveAndReturnId(l_ds)
+        conn.saveAndReturnId(l_ds)
     return dsId
 
 def createProject(conn, groupId, name, description=None):
@@ -191,34 +193,7 @@ def list_groups(conn):
     #reset to first group
     conn.SERVICE_OPTS.setOmeroGroup(myGroups[0].id)
     return groups
-    
-def do_import(conn, filename, groupId, datasetId):
-    conn.SERVICE_OPTS.setOmeroGroup(groupId)
-    user = conn.getUser()
-    #sessionId = session['ID']
-    sessionId = conn.c.getSessionId()
 
-    cli = omero.cli.CLI()
-    cli.loadplugins()
-    cli.invoke(["sessions", "login", "-s", "localhost", "-k", "%s" % sessionId], strict=True)
-    cli.invoke(["sessions", "group", "%s" % groupId], strict=True)    
-    import_args = ["import"]
-    import_args.extend(["-d", str(datasetId)])
-    import_args.append(filename)
-    import_args.extend(["-s","localhost","-u","%s"%user.getName()])
-    
-    # redirect both stderr and stdout to file
-    errlog = TEMP_DIR + "/stderr.txt"
-    import_args.extend(["---errs",errlog])
-    outlog = TEMP_DIR + "/stdout.txt"
-    import_args.extend(["---file",outlog])
-    cli.invoke(import_args, strict=True)
-    
-    # use stdout to get the id of the new image
-    newImg = get_new_image(conn)
-    empty_temp(TEMP_DIR)
-    return newImg
-    
 @login_required()
 @render_response()
 def upload(request, conn=None, **kwargs):
@@ -266,8 +241,8 @@ def upload(request, conn=None, **kwargs):
             gnames.append((g,gn))
 
         first_group = groups[0]
-        pnames = [("None","No projects")]
-        dnames = [("None","No datasets")]
+        pnames = [("None","No project")]
+        dnames = [("None","No dataset")]
         projects = list_projects(conn,first_group['id'])
         if projects:
             first_project = projects[0]
@@ -313,7 +288,7 @@ def listDatasets_json(request, conn=None, **kwargs):
     if request.POST:
         gid = request.POST.get("group_id")
         pid = request.POST.get("project_id")
-        datasets = [{'id':'None','name': 'No datasets'}]        
+        datasets = [{'id':'None','name': 'No dataset'}]        
         if 'None' in pid:
             datasets += list_datasets(conn,gid,None)
         else:
@@ -330,7 +305,7 @@ def listProjects_json(request, conn=None, **kwargs):
 
     if request.POST:
         gid = request.POST.get("group_id")
-        projects = [{'id':'None','name': 'No projects'}]
+        projects = [{'id':'None','name': 'No project'}]
         if list_projects(conn,gid):
             projects += list_projects(conn,gid)
         data = json.dumps(projects)
@@ -348,7 +323,7 @@ def create_project(request, conn=None, **kwargs):
         name = request.POST.get("project_name")
         description = request.POST.get("project_description")
         pid = createProject(conn,gid,name,description)
-        projects = [{'id':'None','name': 'No projects'}]
+        projects = [{'id':'None','name': 'No project'}]
         if pid:
             projects.append({'id': pid, 'name': name})
         data = json.dumps(projects)
@@ -363,13 +338,16 @@ def create_dataset(request, conn=None, **kwargs):
 
     if request.POST:
         gid = request.POST.get("group_id")
-        name = request.POST.get("project_name")
-        description = request.POST.get("project_description")
-        pid = createProject(conn,gid,name,description)
-        projects = [{'id':'None','name': 'No projects'}]
-        if pid:
-            projects.append({'id': pid, 'name': name})
-        data = json.dumps(projects)
+        pid = request.POST.get("project_id")
+        if "None" in pid:
+            pid = None
+        name = request.POST.get("dataset_name")
+        description = request.POST.get("dataset_description")
+        did = createDataset(conn,gid,pid,name,description)
+        datasets = [{'id':'None','name': 'No dataset'}]
+        if did:
+            datasets.append({'id': did, 'name': name})
+        data = json.dumps(datasets)
         return HttpResponse(data, content_type='application/json')
     else:
         rv = {'message':"failed"}

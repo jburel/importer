@@ -33,7 +33,7 @@
 		        {% endfor %}
 			</form>
 
-			<span class="create"><button class="bluebtn" id="create-project">New...</button></span>
+			<span class="create"><button class="custombtn" id="create-project">New...</button></span>
 
 			<form id="datasets" >{% csrf_token %}
 		        {{ dataset_form.errors }}
@@ -46,16 +46,16 @@
 		        {% endfor %}
 			</form>		
 
-			<span class="create"><button class="bluebtn" id="create-dataset">New...</button></span>
+			<span class="create"><button class="custombtn" id="create-dataset">New...</button></span>
 		</div>
 		<div id="upload-controls">
 			<form id="upload" action="{% url 'upload' %}" method="POST" enctype="multipart/form-data">{% csrf_token %}	 
 			</form>
 		
 			<div id="container">
-			    <button class="bluebtn" id="pickfiles">Select files</button>
-			    <button class="bluebtn" id="clearfiles">Clear files</button>
-				<button class="bluebtn" id="uploadfiles" type="submit">{% trans 'Start upload' %}</button>			    
+			    <button class="custombtn orange" id="pickfiles">Select files</button>
+			    <button class="custombtn red" id="clearfiles">Clear files</button>
+				<button class="custombtn green" id="uploadfiles" type="submit">{% trans 'Start upload' %}</button>			    
 			</div>
 			<div id="filelist">
 				<table class="tablesorter tablesorter_basic" id="file-table">
@@ -76,7 +76,7 @@
 			<pre id="console"></pre>
 		</div>
 	</div>
-	<div id="proj-dialog-form" title="Dialog form">
+	<div id="proj-dialog-form" title="New project form">
 		<div class="standard_form">
 			<form action="{% url 'create_project' %}" method="POST" enctype="multipart/form-data">{% csrf_token %}	
 				<label for="project-name">Project name:</label> 
@@ -86,7 +86,7 @@
 			</form>
 		</div>
 	</div>
-	<div id="ds-dialog-form" title="Dialog form">
+	<div id="ds-dialog-form" title="New dataset form">
 		<div class="standard_form">
 			<form action="{% url 'create_dataset' %}" method="POST" enctype="multipart/form-data">{% csrf_token %}	
 				<label for="dataset-name">Dataset name:</label> 
@@ -104,11 +104,18 @@
 		$("#id_group").val($("#id_group option:first").val());
 		$("#id_group").trigger("chosen:updated");	
 
-		$("#id_group").on('change',function(e) { 
-			e.preventDefault();
-			var gid = $("#id_group").val();
-			console.log(gid)
-			$.post( "{% url 'listProjects_json' %}", { group_id: gid }, function( data ) {
+		function listDatasets(groupId, projectId){
+			$.post( "{% url 'listDatasets_json' %}", { group_id: groupId, project_id: projectId }, function( datasets ) {
+		  		$("#id_dataset").empty();
+		    	for (i = 0; i < datasets.length; i++) {
+					$("#id_dataset").append($("<option />").val(datasets[i]["id"]).text(datasets[i]["name"]));				
+				}
+				$("#id_dataset").trigger("chosen:updated");							
+			}, "json");	
+		}
+
+		function listProjects(groupId){
+			$.post( "{% url 'listProjects_json' %}", { group_id: groupId }, function( data ) {
 			  		$("#id_project").empty();
 			  		console.log(data)
 			    	for (i = 0; i < data.length; i++) {
@@ -116,28 +123,22 @@
 					}
 					$("#id_project").trigger("chosen:updated");
 
-					$.post( "{% url 'listDatasets_json' %}", { group_id: gid, project_id: data[0]["id"] }, function( datasets ) {
-				  		$("#id_dataset").empty();
-				    	for (i = 0; i < datasets.length; i++) {
-							$("#id_dataset").append($("<option />").val(datasets[i]["id"]).text(datasets[i]["name"]));				
-						}
-						$("#id_dataset").trigger("chosen:updated");							
-					}, "json");			
+					listDatasets(groupId, data[0]["id"]);		
 		  	},"json");
+		}
+
+		$("#id_group").on('change',function(e) { 
+			e.preventDefault();
+			var gid = $("#id_group").val();
+			console.log(gid)
+			listProjects(gid);
 		});			
 
 		$("#id_project").on('change',function(e) { 
 			e.preventDefault();
 			var gid = $("#id_group").val(),
 				pid = $("#id_project").val();
-			$.post( "{% url 'listDatasets_json' %}", { group_id: gid, project_id: pid }, function( datasets ) {
-	  			console.log("datasets",datasets)
-		  		$("#id_dataset").empty();
-		    	for (i = 0; i < datasets.length; i++) {
-					$("#id_dataset").append($("<option />").val(datasets[i]["id"]).text(datasets[i]["name"]));				
-				}
-				$("#id_dataset").trigger("chosen:updated");		
-			}, "json");
+			listDatasets(gid,pid);
 		});		
 
 		$("#clearfiles").click(function() {
@@ -152,22 +153,8 @@
 					name = $("#project-name").val(),
 					description = $("#project-description").val();
 				$.post("{% url 'create_project' %}", { group_id: gid, project_name: name, project_description: description}, function(data) {
-					$.post( "{% url 'listProjects_json' %}", { group_id: gid }, function( data ) {
-					  		$("#id_project").empty();
-					  		console.log(data)
-					    	for (i = 0; i < data.length; i++) {
-								$("#id_project").append($("<option />").val(data[i]["id"]).text(data[i]["name"]));				
-							}
-							$("#id_project").trigger("chosen:updated");
-
-							$.post( "{% url 'listDatasets_json' %}", { group_id: gid, project_id: data[0]["id"] }, function( datasets ) {
-						  		$("#id_dataset").empty();
-						    	for (i = 0; i < datasets.length; i++) {
-									$("#id_dataset").append($("<option />").val(datasets[i]["id"]).text(datasets[i]["name"]));				
-								}
-								$("#id_dataset").trigger("chosen:updated");							
-							}, "json");			
-				  	},"json");
+					listProjects(gid);
+				  	proj_dialog.dialog( "close" );
 				}, "json");
 			}
 
@@ -179,11 +166,11 @@
 			  buttons: {
 			    "Create a project": addProject,
 			    Cancel: function() {
-			      dialog.dialog( "close" );
+			      proj_dialog.dialog( "close" );
 			    }
 			  },
 			  close: function() {
-			    form[ 0 ].reset();
+			    proj_form[ 0 ].reset();
 			  }
 			});
 
@@ -201,27 +188,14 @@
 			var ds_dialog, ds_form;
 
 			function addDataset() {
-				var gid = gid = $("#id_group").val(),
-					name = $("#project-name").val(),
-					description = $("#project-description").val();
-				$.post("{% url 'create_project' %}", { group_id: gid, project_name: name, project_description: description}, function(data) {
-					$.post( "{% url 'listProjects_json' %}", { group_id: gid }, function( data ) {
-					  		$("#id_project").empty();
-					  		console.log(data)
-					    	for (i = 0; i < data.length; i++) {
-								$("#id_project").append($("<option />").val(data[i]["id"]).text(data[i]["name"]));				
-							}
-							$("#id_project").trigger("chosen:updated");
-
-							$.post( "{% url 'listDatasets_json' %}", { group_id: gid, project_id: data[0]["id"] }, function( datasets ) {
-						  		$("#id_dataset").empty();
-						    	for (i = 0; i < datasets.length; i++) {
-									$("#id_dataset").append($("<option />").val(datasets[i]["id"]).text(datasets[i]["name"]));				
-								}
-								$("#id_dataset").trigger("chosen:updated");							
-							}, "json");			
-				  	},"json");
-				}, "json");
+				var gid = $("#id_group").val(),
+					pid = $("#id_project").val(),
+					name = $("#dataset-name").val(),
+					description = $("#dataset-description").val();
+				$.post("{% url 'create_dataset' %}",{group_id: gid, project_id: pid, dataset_name: name, dataset_description: description},function(data) {
+					listDatasets(gid,pid);
+					ds_dialog.dialog( "close" );
+				});
 			}
 
 			ds_dialog = $( "#ds-dialog-form" ).dialog({
@@ -232,11 +206,11 @@
 			  buttons: {
 			    "Create a dataset": addDataset,
 			    Cancel: function() {
-			      dialog.dialog( "close" );
+			      ds_dialog.dialog( "close" );
 			    }
 			  },
 			  close: function() {
-			    form[ 0 ].reset();
+			    ds_form[ 0 ].reset();
 			  }
 			});
 
@@ -317,11 +291,15 @@
 
 						// Insert a row in the table at the last row
 						var newRow   = tableRef.insertRow(tableRef.rows.length);
+						newRow.id = "file"+file.id;
 
 						// create delete button
-						var btn = document.createElement('input');
-						btn.type = "button";
-						btn.className = "btn silver";
+						var btn = document.createElement('a');
+						btn.id = "delete_"+file.id;
+						btn.className = "custombtn red small";
+						btn.setAttribute('href',"#");
+						btn.setAttribute('onclick','deleteFile(this.id)');
+						btn.innerHTML = "delete";
 						btn.value = "delete";
 						//btn.onclick = (function(entry) {return function() {chooseUser(entry);}})(entry);
 
@@ -332,7 +310,6 @@
 								cell.appendChild(document.createTextNode(cells[c]));
 							}
 							else {
-								cell.id = "delete_"+cells[0];
 								cell.appendChild(cells[c]);
 							}
 							if (c == 3){
@@ -343,7 +320,7 @@
 		        },
 		 
 		        UploadProgress: function(up, file) {
-		        	//console.log(document.getElementById("progress_"+file.id).innerHTML)
+		        	console.log($("#progress_"+file.id).val())
 		            document.getElementById("progress_"+file.id).innerHTML = file.percent+"%";
 		        },
 		 
@@ -408,6 +385,11 @@
 		       }  
 		   });
 
+		function deleteFile(buttonId) {
+			var fileId = $('#'+buttonId).closest("tr").find("td:nth-child(1)").text();
+			$('#file'+fileId).remove();
+
+		}
 		 
 	</script>	
 {% endblock %}

@@ -18,7 +18,7 @@
     	#filelist {
     		padding-top: 30px;
     	}
-		.bluebtn {
+		.custombtn{
 			display: inline-block;
 		    background: #fff -moz-linear-gradient(center top , hsl(210, 40%, 70%) 0%, hsl(210, 40%, 60%) 100%) repeat scroll 0 0;
 		    border-color: hsl(210, 40%, 50%) hsl(210, 40%, 40%) hsl(210, 40%, 35%);
@@ -35,16 +35,53 @@
 		    padding: 5px 20px;
 		    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.3);
 		}
-		.bluebtn:hover {
+		.custombtn:hover {
 		    background-image: -moz-linear-gradient(center top , hsl(210, 40%, 76%) 0%, hsl(210, 40%, 60%) 100%);
 		}
-		.bluebtn:active, .bluebtn:focus {
+		.custombtn:active, .custombtn:focus {
 		    background-image: -moz-linear-gradient(center top , hsl(210, 40%, 60%) 0%, hsl(210, 40%, 65%) 100%);
 		    border: 1px solid hsl(210, 40%, 40%);
 		    box-shadow: none;
 		}
-		.small {
+		.custombtn.orange {
+		    background: #fff -moz-linear-gradient(center top , hsl(30, 100%, 60%) 0%, hsl(30, 100%, 50%) 100%) repeat scroll 0 0;
+		    border-color: hsl(30, 100%, 40%) hsl(30, 100%, 30%) hsl(30, 100%, 25%);			
+		}		
+		.custombtn.orange:hover {
+		    background-image: -moz-linear-gradient(center top , hsl(30, 100%, 70%) 0%, hsl(30, 100%, 60%) 100%);
+		}	
+		.custombtn.orange:active, .custombtn.orange:focus {
+		    background-image: -moz-linear-gradient(center top , hsl(30, 100%, 50%) 0%, hsl(30, 100%, 55%) 100%);
+		    border: 1px solid hsl(30, 100%, 30%);
+		    box-shadow: none;
+		}					
+		.custombtn.red {
+		    background: #fff -moz-linear-gradient(center top , hsl(360, 100%, 60%) 0%, hsl(360, 100%, 50%) 100%) repeat scroll 0 0;
+		    border-color: hsl(360, 100%, 40%) hsl(360, 100%, 30%) hsl(360, 100%, 25%);			
+		}
+		.custombtn.red:hover {
+		    background-image: -moz-linear-gradient(center top , hsl(360, 100%, 70%) 0%, hsl(360, 100%, 60%) 100%);
+		}		
+		.custombtn.red:active, .custombtn.red:focus {
+		    background-image: -moz-linear-gradient(center top , hsl(360, 100%, 50%) 0%, hsl(360, 100%, 55%) 100%);
+		    border: 1px solid hsl(360, 100%, 30%);
+		    box-shadow: none;
+		}			
+		.custombtn.green {
+		    background: #fff -moz-linear-gradient(center top , hsl(100, 100%, 35%) 0%, hsl(100, 100%, 25%) 100%) repeat scroll 0 0;
+		    border-color: hsl(100, 100%, 15%) hsl(100, 5%, 30%) hsl(100, 100%, 0%);			
+		}		
+		.custombtn.green:hover {
+		    background-image: -moz-linear-gradient(center top , hsl(100, 100%, 40%) 0%, hsl(100, 100%, 35%) 100%);
+		}	
+		.custombtn.green:active, .custombtn.green:focus {
+		    background-image: -moz-linear-gradient(center top , hsl(100, 100%, 25%) 0%, hsl(100, 100%, 30%) 100%);
+		    border: 1px solid hsl(100, 100%, 5%);
+		    box-shadow: none;
+		}				
+		.custombtn.red.small {
 			padding: 1px 10px;
+			font-weight: normal;
 		}
     </style>
 {% endblock %}
@@ -53,7 +90,7 @@
     <div id="center_details">
         {% if ome.message %}<div class="error">{{ ome.message|safe|linebreaks }}</div>{% endif %}
         {% block center_details %}{% endblock %}
-    </div>
+    </div>   
 {% endblock %}
 
 {% block script %}
@@ -65,5 +102,4 @@
 	<!--[if lte IE 8]>
 		<link rel="stylesheet" type="text/css" href="{% static "webgateway/css/ome.table_ie.css"|add:url_suffix %}" />
 	<![endif]-->    	
-
-{% endblock %}    
+{% endblock %}     
